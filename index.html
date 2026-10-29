@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Guitar Pedalboard</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ── HEADER ──────────────────────────────────────────────────────────── -->
+<header>
+  <div class="logo">⚡ <span>GUITAR PEDALBOARD</span></div>
+  <div class="controls">
+    <div class="device-sel"><label>ENTRÉE</label><select id="input-device"></select></div>
+    <div class="device-sel"><label>SORTIE</label><select id="output-device"></select></div>
+    <button id="connect-btn" onclick="toggleConnect()">CONNECT</button>
+    <span id="status">Déconnecté</span>
+    <button id="ai-toggle-btn" onclick="toggleAIPanel()">✦ AI</button>
+  </div>
+</header>
+
+<!-- ── AMP HEAD ─────────────────────────────────────────────────────────── -->
+<div class="amp-head">
+
+  <div class="amp-left">
+    <div class="amp-brand">
+      <div class="brand-name">TUBE MASTER</div>
+      <div class="brand-sub">VIRTUAL AMP · 100W</div>
+    </div>
+    <div class="amp-model-row">
+      <span class="amp-section-label">MODEL</span>
+      <button class="model-btn active" id="model-fender"   onclick="setAmpModel('fender')">FENDER</button>
+      <button class="model-btn"        id="model-marshall" onclick="setAmpModel('marshall')">MARSHALL</button>
+      <button class="model-btn"        id="model-mesa"     onclick="setAmpModel('mesa')">MESA</button>
+      <button class="model-btn"        id="model-vox"      onclick="setAmpModel('vox')">VOX</button>
+      <button class="model-btn"        id="model-tweed"    onclick="setAmpModel('tweed')">TWEED</button>
+    </div>
+    <div class="amp-channel-row">
+      <span class="amp-section-label">CHANNEL</span>
+      <button class="ch-btn active" id="ch-clean"  onclick="setChannel('clean')"><span class="ch-led"></span>CLEAN</button>
+      <button class="ch-btn"        id="ch-crunch" onclick="setChannel('crunch')"><span class="ch-led"></span>CRUNCH</button>
+      <button class="ch-btn"        id="ch-lead"   onclick="setChannel('lead')"><span class="ch-led"></span>LEAD</button>
+    </div>
+  </div>
+
+  <div class="amp-center">
+    <div class="amp-knobs-label">PREAMP</div>
+    <div class="amp-knobs-row">
+      <div class="amp-knob-wrap" data-param="gain"   data-min="0" data-max="10" data-default="5">
+        <div class="knob-ring"><div class="knob-visual" id="dial-gain"><div class="knob-marker"></div></div></div>
+        <span class="knob-label">GAIN</span>
+        <span class="knob-val" id="kv-gain">5.0</span>
+      </div>
+      <div class="amp-knob-wrap" data-param="volume" data-min="0" data-max="10" data-default="6">
+        <div class="knob-ring"><div class="knob-visual" id="dial-volume"><div class="knob-marker"></div></div></div>
+        <span class="knob-label">VOLUME</span>
+        <span class="knob-val" id="kv-volume">6.0</span>
+      </div>
+      <div class="amp-knob-wrap" data-param="presence" data-min="0" data-max="10" data-default="5">
+        <div class="knob-ring"><div class="knob-visual" id="dial-presence"><div class="knob-marker"></div></div></div>
+        <span class="knob-label">PRESENCE</span>
+        <span class="knob-val" id="kv-presence">5.0</span>
+      </div>
+    </div>
+    <div class="amp-knobs-label" style="margin-top:6px">TONE STACK</div>
+    <div class="amp-knobs-row">
+      <div class="amp-knob-wrap" data-param="bass"   data-min="0" data-max="10" data-default="5">
+        <div class="knob-ring"><div class="knob-visual" id="dial-bass"><div class="knob-marker"></div></div></div>
+        <span class="knob-label">BASS</span>
+        <span class="knob-val" id="kv-bass">5.0</span>
+      </div>
+      <div class="amp-knob-wrap" data-param="mid"    data-min="0" data-max="10" data-default="5">
+        <div class="knob-ring"><div class="knob-visual" id="dial-mid"><div class="knob-marker"></div></div></div>
+        <span class="knob-label">MID</span>
+        <span class="knob-val" id="kv-mid">5.0</span>
+      </div>
+      <div class="amp-knob-wrap" data-param="treble" data-min="0" data-max="10" data-default="5">
+        <div class="knob-ring"><div class="knob-visual" id="dial-treble"><div class="knob-marker"></div></div></div>
+        <span class="knob-label">TREBLE</span>
+        <span class="knob-val" id="kv-treble">5.0</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="amp-right">
+    <div class="scope-wrap">
+      <div class="scope-label">SIGNAL</div>
+      <canvas id="oscilloscope" width="220" height="70"></canvas>
+    </div>
+    <div class="vu-wrap">
+      <canvas id="vu-meter" width="16" height="70"></canvas>
+    </div>
+    <div class="amp-power">
+      <div class="power-led" id="power-led"></div>
+      <span class="power-label">PWR</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── GENRE BAR ────────────────────────────────────────────────────────── -->
+<div class="genre-bar">
+  <span class="genre-label">GENRE</span>
+  <button class="genre-btn" id="genre-clean"   onclick="applyGenre('clean')">Clean</button>
+  <button class="genre-btn" id="genre-rock"    onclick="applyGenre('rock')">Rock</button>
+  <button class="genre-btn" id="genre-metal"   onclick="applyGenre('metal')">Metal</button>
+  <button class="genre-btn" id="genre-blues"   onclick="applyGenre('blues')">Blues</button>
+  <button class="genre-btn" id="genre-jazz"    onclick="applyGenre('jazz')">Jazz</button>
+  <button class="genre-btn" id="genre-funk"    onclick="applyGenre('funk')">Funk</button>
+  <button class="genre-btn" id="genre-pop"     onclick="applyGenre('pop')">Pop</button>
+  <button class="genre-btn" id="genre-country" onclick="applyGenre('country')">Country</button>
+  <button class="genre-btn" id="genre-reggae"  onclick="applyGenre('reggae')">Reggae</button>
+</div>
+
+<!-- ── PRESET BAR ──────────────────────────────────────────────────────────── -->
+<div class="preset-bar">
+  <span class="preset-label">PRESETS</span>
+  <select id="preset-select"></select>
+  <button class="preset-btn" id="preset-load-btn"   onclick="loadPreset()">LOAD</button>
+  <button class="preset-btn preset-del" id="preset-delete-btn" onclick="deletePreset()">DEL</button>
+  <div class="preset-sep"></div>
+  <input type="text" id="preset-name" placeholder="Nom du preset..." maxlength="32" autocomplete="off">
+  <button class="preset-btn preset-save" id="preset-save-btn" onclick="savePreset()">SAVE</button>
+</div>
+
+<!-- ── PEDALBOARD (9 pedals) ────────────────────────────────────────────── -->
+<main class="board">
+
+  <!-- 1. COMPRESSEUR -->
+  <div class="pedal" id="pedal-compressor">
+    <div class="pedal-top"><span class="pedal-name">COMPRESS</span>
+      <button class="toggle" id="compressor-toggle" onclick="toggleEffect('compressor')">OFF</button></div>
+    <div class="pedal-body">
+      <div class="knob"><label>Seuil</label>
+        <input type="range" id="comp-threshold" min="-40" max="0" step="1" value="-24" oninput="updateCompressor()">
+        <span id="comp-threshold-val">-24 dB</span></div>
+      <div class="knob"><label>Ratio</label>
+        <input type="range" id="comp-ratio" min="1" max="20" step="0.5" value="4" oninput="updateCompressor()">
+        <span id="comp-ratio-val">4.0:1</span></div>
+    </div>
+  </div>
+
+  <!-- 2. OVERDRIVE -->
+  <div class="pedal" id="pedal-overdrive">
+    <div class="pedal-top"><span class="pedal-name">OVERDRIVE</span>
+      <button class="toggle" id="overdrive-toggle" onclick="toggleEffect('overdrive')">OFF</button></div>
+    <div class="pedal-body">
+      <div class="knob"><label>Drive</label>
+        <input type="range" id="od-drive" min="0" max="1" step="0.01" value="0.5" oninput="updateOverdrive()">
+        <span id="od-drive-val">50%</span></div>
+      <div class="knob"><label>Tone</label>
+        <input type="range" id="od-tone" min="1000" max="8000" step="100" value="5000" oninput="updateOverdrive()">
+        <span id="od-tone-val">5000 Hz</span></div>
+      <div class="knob"><label>Niveau</label>
+        <input type="range" id="od-level" min="0.1" max="1" step="0.01" value="0.8" oninput="updateOverdrive()">
+        <span id="od-level-val">80%</span></div>
+    </div>
+  </div>
+
+  <!-- 3. DISTORSION -->
+  <div class="pedal" id="pedal-distortion">
+    <div class="pedal-top"><span class="pedal-name">DISTORSION</span>
+      <button class="toggle" id="distortion-toggle" onclick="toggleEffect('distortion')">OFF</button></div>
+    <div class="pedal-body">
+      <div class="knob"><label>Drive</label>
+        <input type="range" id="dist-drive" min="0" max="1" step="0.01" value="0.5" oninput="updateDistortion()">
+        <span id="dist-drive-val">50%</span></div>
+      <div class="knob"><label>Tone</label>
+        <input type="range" id="dist-tone" min="500" max="8000" step="100" value="3000" oninput="updateDistortion()">
+        <span id="dist-tone-val">3000 Hz</span></div>
+      <div class="knob"><label>Niveau</label>
+        <input type="range" id="dist-level" min="0.1" max="1" step="0.01" value="0.7" oninput="updateDistortion()">
+        <span id="dist-level-val">70%</span></div>
+    </div>
+  </div>
+
+  <!-- 4. CHORUS -->
+  <div class="pedal" id="pedal-chorus">
+    <div class="pedal-top"><span class="pedal-name">CHORUS</span>
+      <button class="toggle" id="chorus-toggle" onclick="toggleEffect('chorus')">OFF</button></div>
+    <div class="pedal-body">
+      <div class="knob"><label>Vitesse</label>
+        <input type="range" id="chorus-rate" min="0.1" max="5" step="0.1" value="1.5" oninput="updateChorus()">
+        <span id="chorus-rate-val">1.5 Hz</span></div>
+      <div class="knob"><label>Profondeur</label>
+        <input type="range" id="chorus-depth" min="0" max="1" step="0.01" value="0.5" oninput="updateChorus()">
+        <span id="chorus-depth-val">50%</span></div>
+      <div class="knob"><label>Mix</label>
+        <input type="range" id="chorus-mix" min="0" max="1" step="0.01" value="0.5" oninput="updateChorus()">
+        <span id="chorus-mix-val">50%</span></div>
+    </div>
+  </div>
+
+  <!-- 5. PHASER -->
+  <div class="pedal" id="pedal-phaser">
+    <div class="pedal-top"><span class="pedal-name">PHASER</span>
+      <button class="toggle" id="phaser-toggle" onclick="toggleEffect('phaser')">OFF</button></div>
+    <div class="pedal-body">
+      <div class="knob"><label>Vitesse</label>
+        <input type="range" id="phaser-rate" min="0.1" max="5" step="0.1" value="0.5" oninput="updatePhaser()">
+        <span id="phaser-rate-val">0.5 Hz</span></div>
+      <div class="knob"><label>Profondeur</label>
+        <input type="range" id="phaser-depth" min="0" max="1" step="0.01" value="0.5" oninput="updatePhaser()">
+        <span id="phaser-depth-val">50%</span></div>
+      <div class="knob"><label>Mix</label>
+        <input type="range" id="phaser-mix" min="0" max="1" step="0.01" value="0.5" oninput="updatePhaser()">
+        <span id="phaser-mix-val">50%</span></div>
+    </div>
+  </div>
+
+  <!-- 6. DELAY -->
+  <div class="pedal" id="pedal-delay">
+    <div class="pedal-top"><span class="pedal-name">DELAY</span>
+      <button class="toggle" id="delay-toggle" onclick="toggleEffect('delay')">OFF</button></div>
+    <div class="pedal-body">
+      <div class="knob"><label>Temps</label>
+        <input type="range" id="delay-time" min="0.05" max="1.0" step="0.01" value="0.3" oninput="updateDelay()">
+        <span id="delay-time-val">300 ms</span></div>
+      <div class="knob"><label>Feedback</label>
+        <input type="range" id="delay-feedback" min="0" max="0.9" step="0.01" value="0.4" oninput="updateDelay()">
+        <span id="delay-feedback-val">40%</span></div>
+      <div class="knob"><label>Mix</label>
+        <input type="range" id="delay-mix" min="0" max="1" step="0.01" value="0.5" oninput="updateDelay()">
+        <span id="delay-mix-val">50%</span></div>
+    </div>
+  </div>
+
+  <!-- 7. REVERB -->
+  <div class="pedal" id="pedal-reverb">
+    <div class="pedal-top"><span class="pedal-name">REVERB</span>
+      <button class="toggle" id="reverb-toggle" onclick="toggleEffect('reverb')">OFF</button></div>
+    <div class="pedal-body">
+      <div class="knob"><label>Pièce</label>
+        <input type="range" id="reverb-room" min="0.1" max="1" step="0.01" value="0.5" oninput="updateReverb()">
+        <span id="reverb-room-val">50%</span></div>
+      <div class="knob"><label>Amortissement</label>
+        <input type="range" id="reverb-decay" min="0.1" max="1" step="0.01" value="0.5" oninput="updateReverb()">
+        <span id="reverb-decay-val">50%</span></div>
+      <div class="knob"><label>Mix</label>
+        <input type="range" id="reverb-mix" min="0" max="1" step="0.01" value="0.3" oninput="updateReverb()">
+        <span id="reverb-mix-val">30%</span></div>
+    </div>
+  </div>
+
+  <!-- 8. TREMOLO -->
+  <div class="pedal" id="pedal-tremolo">
+    <div class="pedal-top"><span class="pedal-name">TREMOLO</span>
+      <button class="toggle" id="tremolo-toggle" onclick="toggleEffect('tremolo')">OFF</button></div>
+    <div class="pedal-body">
+      <div class="knob"><label>Vitesse</label>
+        <input type="range" id="tremolo-rate" min="0.5" max="15" step="0.1" value="5" oninput="updateTremolo()">
+        <span id="tremolo-rate-val">5.0 Hz</span></div>
+      <div class="knob"><label>Profondeur</label>
+        <input type="range" id="tremolo-depth" min="0" max="1" step="0.01" value="0.5" oninput="updateTremolo()">
+        <span id="tremolo-depth-val">50%</span></div>
+    </div>
+  </div>
+
+  <!-- 9. ÉGALISEUR -->
+  <div class="pedal" id="pedal-eq">
+    <div class="pedal-top"><span class="pedal-name">ÉGALISEUR</span>
+      <button class="toggle" id="eq-toggle" onclick="toggleEffect('eq')">OFF</button></div>
+    <div class="pedal-body">
+      <div class="knob"><label>Basses</label>
+        <input type="range" id="eq-bass" min="-15" max="15" step="0.5" value="0" oninput="updateEQ()">
+        <span id="eq-bass-val">+0 dB</span></div>
+      <div class="knob"><label>Médiums</label>
+        <input type="range" id="eq-mid" min="-15" max="15" step="0.5" value="0" oninput="updateEQ()">
+        <span id="eq-mid-val">+0 dB</span></div>
+      <div class="knob"><label>Aigus</label>
+        <input type="range" id="eq-treble" min="-15" max="15" step="0.5" value="0" oninput="updateEQ()">
+        <span id="eq-treble-val">+0 dB</span></div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ── AI PANEL ────────────────────────────────────────────────────────────── -->
+<div class="ai-panel" id="ai-panel">
+  <div class="ai-panel-header">
+    <span class="ai-panel-title">✦ AI TONE ASSISTANT</span>
+    <select id="ai-model-sel"></select>
+    <button class="ai-add-model-btn" id="ai-add-model-btn" onclick="togglePullSection()" title="Télécharger un modèle">+</button>
+    <button class="ai-panel-close" onclick="toggleAIPanel()">✕</button>
+  </div>
+
+  <div class="ai-pull-section" id="ai-pull-section">
+    <div class="ai-pull-row">
+      <span class="ai-pull-label">MODÈLES POPULAIRES</span>
+    </div>
+    <div class="ai-pull-grid">
+      <button class="ai-pull-quick" onclick="aiPullModel('llama3.2')">
+        <span class="pq-name">llama3.2</span><span class="pq-size">3B · 2.0 GB</span>
+      </button>
+      <button class="ai-pull-quick" onclick="aiPullModel('llama3.2:1b')">
+        <span class="pq-name">llama3.2:1b</span><span class="pq-size">1B · 1.3 GB</span>
+      </button>
+      <button class="ai-pull-quick" onclick="aiPullModel('mistral')">
+        <span class="pq-name">mistral</span><span class="pq-size">7B · 4.1 GB</span>
+      </button>
+      <button class="ai-pull-quick" onclick="aiPullModel('llama3.1:8b')">
+        <span class="pq-name">llama3.1:8b</span><span class="pq-size">8B · 4.7 GB</span>
+      </button>
+      <button class="ai-pull-quick" onclick="aiPullModel('deepseek-r1:7b')">
+        <span class="pq-name">deepseek-r1:7b</span><span class="pq-size">7B · 4.7 GB</span>
+      </button>
+      <button class="ai-pull-quick" onclick="aiPullModel('phi4-mini')">
+        <span class="pq-name">phi4-mini</span><span class="pq-size">3.8B · 2.5 GB</span>
+      </button>
+      <button class="ai-pull-quick" onclick="aiPullModel('gemma3:4b')">
+        <span class="pq-name">gemma3:4b</span><span class="pq-size">4B · 2.5 GB</span>
+      </button>
+      <button class="ai-pull-quick" onclick="aiPullModel('qwen2.5:7b')">
+        <span class="pq-name">qwen2.5:7b</span><span class="pq-size">7B · 4.7 GB</span>
+      </button>
+    </div>
+    <div class="ai-pull-custom-row">
+      <input type="text" id="ai-pull-input" placeholder="modèle personnalisé (ex: mistral:latest)" autocomplete="off">
+      <button id="ai-pull-btn" onclick="aiPullCustom()">PULL</button>
+    </div>
+    <div class="ai-pull-progress" id="ai-pull-progress">
+      <div class="ai-pull-bar-wrap" id="ai-pull-bar-wrap" style="display:none">
+        <div class="ai-pull-bar" id="ai-pull-bar"></div>
+      </div>
+      <span id="ai-pull-status"></span>
+    </div>
+  </div>
+  <div class="ai-chat-body" id="ai-chat-body">
+    <div class="ai-welcome">
+      <div class="ai-welcome-icon">✦</div>
+      <p>Décris le son que tu recherches ou donne-moi un morceau à reproduire.</p>
+      <p class="ai-welcome-ex">Ex : <em>Comfortably Numb</em> · <em>Son blues Hendrix</em> · <em>Metal djent agressif</em> · <em>Jazz bebop chaud</em></p>
+    </div>
+  </div>
+  <div class="ai-input-row">
+    <input type="text" id="ai-prompt" placeholder="Décris ton son ou un morceau..." autocomplete="off">
+    <button id="ai-suggest-btn" onclick="aiSuggest()">↵</button>
+  </div>
+</div>
+
+<script src="renderer.js"></script>
+</body>
+</html>

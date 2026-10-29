@@ -1,0 +1,140 @@
+{
+  "presets": [
+    {
+      "id": "1793030942153",
+      "ampModel": "fender",
+      "channel": "clean",
+      "amp": {
+        "gain": 5,
+        "volume": 6,
+        "presence": 7.0390625,
+        "bass": 5,
+        "mid": 5,
+        "treble": 10
+      },
+      "effects": {
+        "compressor": {
+          "on": false,
+          "threshold": -24,
+          "ratio": 4
+        },
+        "overdrive": {
+          "on": false,
+          "drive": 0.5,
+          "tone": 5000,
+          "level": 0.8
+        },
+        "distortion": {
+          "on": false,
+          "drive": 0.5,
+          "tone": 3000,
+          "level": 0.7
+        },
+        "chorus": {
+          "on": false,
+          "rate": 3.3,
+          "depth": 0.5,
+          "mix": 0.5
+        },
+        "phaser": {
+          "on": false,
+          "rate": 0.5,
+          "depth": 0.5,
+          "mix": 0.5
+        },
+        "delay": {
+          "on": false,
+          "time": 0.3,
+          "feedback": 0.4,
+          "mix": 0.5
+        },
+        "reverb": {
+          "on": false,
+          "room": 0.5,
+          "decay": 0.5,
+          "mix": 0.3
+        },
+        "tremolo": {
+          "on": false,
+          "rate": 5,
+          "depth": 0.5
+        },
+        "eq": {
+          "on": false,
+          "bass": 0,
+          "mid": 0,
+          "treble": 0
+        }
+      },
+      "name": "test"
+    },
+    {
+      "id": "1793030968136",
+      "ampModel": "fender",
+      "channel": "clean",
+      "amp": {
+        "gain": 0,
+        "volume": 0,
+        "presence": 0,
+        "bass": 0,
+        "mid": 0,
+        "treble": 0.4857700892857135
+      },
+      "effects": {
+        "compressor": {
+          "on": false,
+          "threshold": -24,
+          "ratio": 4
+        },
+        "overdrive": {
+          "on": false,
+          "drive": 0.75,
+          "tone": 5000,
+          "level": 0.8
+        },
+        "distortion": {
+          "on": true,
+          "drive": 0.5,
+          "tone": 3000,
+          "level": 0.7
+        },
+        "chorus": {
+          "on": false,
+          "rate": 3.3,
+          "depth": 0.5,
+          "mix": 0.5
+        },
+        "phaser": {
+          "on": true,
+          "rate": 0.5,
+          "depth": 0.5,
+          "mix": 0.5
+        },
+        "delay": {
+          "on": false,
+          "time": 1,
+          "feedback": 0.4,
+          "mix": 0.5
+        },
+        "reverb": {
+          "on": false,
+          "room": 1,
+          "decay": 0.5,
+          "mix": 0.3
+        },
+        "tremolo": {
+          "on": true,
+          "rate": 15,
+          "depth": 0.5
+        },
+        "eq": {
+          "on": false,
+          "bass": 0,
+          "mid": 0,
+          "treble": 0
+        }
+      },
+      "name": "test22"
+    }
+  ]
+}
