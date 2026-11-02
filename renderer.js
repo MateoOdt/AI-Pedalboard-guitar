@@ -10,11 +10,34 @@ const n = {};
 const state = {
   compressor:false, overdrive:false, distortion:false, chorus:false,
   phaser:false, delay:false, reverb:false, tremolo:false, eq:false,
+  noisegate:false, flanger:false, fuzz:false, autowah:false,
+};
+
+let ngInterval = null;
+let wahInterval = null;
+
+let pedalOrder = ['compressor','overdrive','distortion','chorus','phaser','delay','reverb','tremolo','eq','noisegate','flanger','fuzz','autowah'];
+
+const pedalGridPositions = {
+  compressor: { col: '1 / span 3',  row: '1' },
+  overdrive:  { col: '4 / span 2',  row: '1' },
+  distortion: { col: '6 / span 3',  row: '1' },
+  chorus:     { col: '9 / span 3',  row: '1' },
+  phaser:     { col: '12 / span 2', row: '1' },
+  delay:      { col: '14 / span 4', row: '1' },
+  reverb:     { col: '18 / span 3', row: '1' },
+  tremolo:    { col: '1 / span 4',  row: '2' },
+  eq:         { col: '5 / span 9',  row: '2' },
+  noisegate:  { col: '14 / span 7', row: '2' },
+  flanger:    { col: '1 / span 7',  row: '3' },
+  fuzz:       { col: '8 / span 6',  row: '3' },
+  autowah:    { col: '14 / span 7', row: '3' },
 };
 
 const ampState = { gain:5, volume:6, presence:5, bass:5, mid:5, treble:5 };
 let currentChannel = 'clean';
 let currentModel   = 'fender';
+let directMode     = false;
 
 // ─── Amp models ──────────────────────────────────────────────────────────────
 const AMP_MODELS = {
@@ -29,15 +52,15 @@ const CHANNEL_GAIN = { clean: 0.3, crunch: 0.65, lead: 1.0 };
 
 // ─── Genre presets ────────────────────────────────────────────────────────────
 const GENRES = {
-  clean:   { compressor:{on:false}, overdrive:{on:false}, distortion:{on:false}, chorus:{on:false}, phaser:{on:false}, delay:{on:false}, reverb:{on:true,room:0.3,decay:0.3,mix:0.15}, tremolo:{on:false}, eq:{on:false} },
-  rock:    { compressor:{on:true,threshold:-24,ratio:4}, overdrive:{on:false}, distortion:{on:true,drive:0.55,tone:3500,level:0.75}, chorus:{on:false}, phaser:{on:false}, delay:{on:true,time:0.25,feedback:0.3,mix:0.4}, reverb:{on:true,room:0.4,decay:0.4,mix:0.25}, tremolo:{on:false}, eq:{on:true,bass:3,mid:2,treble:1} },
-  metal:   { compressor:{on:true,threshold:-30,ratio:8}, overdrive:{on:false}, distortion:{on:true,drive:0.9,tone:2500,level:0.8}, chorus:{on:false}, phaser:{on:false}, delay:{on:true,time:0.15,feedback:0.15,mix:0.2}, reverb:{on:false}, tremolo:{on:false}, eq:{on:true,bass:5,mid:-4,treble:3} },
-  blues:   { compressor:{on:true,threshold:-20,ratio:3}, overdrive:{on:true,drive:0.4,tone:4000,level:0.8}, distortion:{on:false}, chorus:{on:false}, phaser:{on:false}, delay:{on:true,time:0.4,feedback:0.4,mix:0.45}, reverb:{on:true,room:0.65,decay:0.55,mix:0.35}, tremolo:{on:false}, eq:{on:true,bass:4,mid:3,treble:-1} },
-  jazz:    { compressor:{on:true,threshold:-18,ratio:3}, overdrive:{on:false}, distortion:{on:false}, chorus:{on:true,rate:0.8,depth:0.35,mix:0.3}, phaser:{on:false}, delay:{on:false}, reverb:{on:true,room:0.3,decay:0.3,mix:0.2}, tremolo:{on:false}, eq:{on:true,bass:3,mid:0,treble:-4} },
-  funk:    { compressor:{on:true,threshold:-26,ratio:6}, overdrive:{on:false}, distortion:{on:false}, chorus:{on:false}, phaser:{on:true,rate:2,depth:0.6,mix:0.5}, delay:{on:false}, reverb:{on:false}, tremolo:{on:false}, eq:{on:true,bass:2,mid:-3,treble:3} },
-  pop:     { compressor:{on:true,threshold:-20,ratio:4}, overdrive:{on:false}, distortion:{on:false}, chorus:{on:true,rate:1.5,depth:0.5,mix:0.4}, phaser:{on:false}, delay:{on:true,time:0.3,feedback:0.25,mix:0.3}, reverb:{on:true,room:0.5,decay:0.45,mix:0.3}, tremolo:{on:false}, eq:{on:true,bass:1,mid:0,treble:2} },
-  country: { compressor:{on:true,threshold:-22,ratio:3}, overdrive:{on:true,drive:0.2,tone:5500,level:0.75}, distortion:{on:false}, chorus:{on:false}, phaser:{on:false}, delay:{on:true,time:0.18,feedback:0.12,mix:0.3}, reverb:{on:true,room:0.35,decay:0.3,mix:0.2}, tremolo:{on:true,rate:4,depth:0.45}, eq:{on:true,bass:0,mid:0,treble:4} },
-  reggae:  { compressor:{on:true,threshold:-20,ratio:4}, overdrive:{on:false}, distortion:{on:false}, chorus:{on:true,rate:0.5,depth:0.3,mix:0.25}, phaser:{on:false}, delay:{on:true,time:0.65,feedback:0.5,mix:0.55}, reverb:{on:true,room:0.5,decay:0.5,mix:0.3}, tremolo:{on:false}, eq:{on:true,bass:6,mid:-2,treble:-2} },
+  clean:   { _amp:{model:'fender',  channel:'clean',  knobs:{gain:3,volume:7,presence:4,bass:5,mid:5,treble:6}},  compressor:{on:false}, overdrive:{on:false}, distortion:{on:false}, chorus:{on:false}, phaser:{on:false}, delay:{on:false}, reverb:{on:true,room:0.3,decay:0.3,mix:0.15}, tremolo:{on:false}, eq:{on:false}, noisegate:{on:false}, flanger:{on:false}, fuzz:{on:false}, autowah:{on:false} },
+  rock:    { _amp:{model:'marshall',channel:'crunch', knobs:{gain:7,volume:7,presence:7,bass:6,mid:7,treble:7}},  compressor:{on:true,threshold:-24,ratio:4}, overdrive:{on:false}, distortion:{on:true,drive:0.55,tone:3500,level:0.75}, chorus:{on:false}, phaser:{on:false}, delay:{on:true,time:0.25,feedback:0.3,mix:0.4}, reverb:{on:true,room:0.4,decay:0.4,mix:0.25}, tremolo:{on:false}, eq:{on:true,bass:3,mid:2,treble:1}, noisegate:{on:false}, flanger:{on:false}, fuzz:{on:false}, autowah:{on:false} },
+  metal:   { _amp:{model:'mesa',    channel:'lead',   knobs:{gain:9,volume:7,presence:8,bass:7,mid:2,treble:8}},  compressor:{on:true,threshold:-30,ratio:8}, overdrive:{on:false}, distortion:{on:true,drive:0.9,tone:2500,level:0.8}, chorus:{on:false}, phaser:{on:false}, delay:{on:true,time:0.15,feedback:0.15,mix:0.2}, reverb:{on:false}, tremolo:{on:false}, eq:{on:true,bass:5,mid:-4,treble:3}, noisegate:{on:true,threshold:-50,release:0.08}, flanger:{on:false}, fuzz:{on:true,drive:0.9,tone:2500,level:0.8}, autowah:{on:false} },
+  blues:   { _amp:{model:'tweed',   channel:'crunch', knobs:{gain:5,volume:6,presence:4,bass:6,mid:6,treble:5}},  compressor:{on:true,threshold:-20,ratio:3}, overdrive:{on:true,drive:0.4,tone:4000,level:0.8}, distortion:{on:false}, chorus:{on:false}, phaser:{on:false}, delay:{on:true,time:0.4,feedback:0.4,mix:0.45}, reverb:{on:true,room:0.65,decay:0.55,mix:0.35}, tremolo:{on:false}, eq:{on:true,bass:4,mid:3,treble:-1}, noisegate:{on:false}, flanger:{on:false}, fuzz:{on:false}, autowah:{on:false} },
+  jazz:    { _amp:{model:'fender',  channel:'clean',  knobs:{gain:2,volume:6,presence:3,bass:6,mid:4,treble:3}},  compressor:{on:true,threshold:-18,ratio:3}, overdrive:{on:false}, distortion:{on:false}, chorus:{on:true,rate:0.8,depth:0.35,mix:0.3}, phaser:{on:false}, delay:{on:false}, reverb:{on:true,room:0.3,decay:0.3,mix:0.2}, tremolo:{on:false}, eq:{on:true,bass:3,mid:0,treble:-4}, noisegate:{on:false}, flanger:{on:false}, fuzz:{on:false}, autowah:{on:false} },
+  funk:    { _amp:{model:'fender',  channel:'clean',  knobs:{gain:4,volume:7,presence:5,bass:4,mid:3,treble:8}},  compressor:{on:true,threshold:-26,ratio:6}, overdrive:{on:false}, distortion:{on:false}, chorus:{on:false}, phaser:{on:false}, delay:{on:false}, reverb:{on:false}, tremolo:{on:false}, eq:{on:true,bass:2,mid:-3,treble:3}, noisegate:{on:false}, flanger:{on:false}, fuzz:{on:false}, autowah:{on:true,sensitivity:5,freqMin:300,freqMax:2800,q:12} },
+  pop:     { _amp:{model:'vox',     channel:'clean',  knobs:{gain:4,volume:7,presence:6,bass:5,mid:5,treble:7}},  compressor:{on:true,threshold:-20,ratio:4}, overdrive:{on:false}, distortion:{on:false}, chorus:{on:true,rate:1.5,depth:0.5,mix:0.4}, phaser:{on:false}, delay:{on:true,time:0.3,feedback:0.25,mix:0.3}, reverb:{on:true,room:0.5,decay:0.45,mix:0.3}, tremolo:{on:false}, eq:{on:true,bass:1,mid:0,treble:2}, noisegate:{on:false}, flanger:{on:false}, fuzz:{on:false}, autowah:{on:false} },
+  country: { _amp:{model:'fender',  channel:'crunch', knobs:{gain:5,volume:7,presence:6,bass:4,mid:5,treble:7}},  compressor:{on:true,threshold:-22,ratio:3}, overdrive:{on:true,drive:0.2,tone:5500,level:0.75}, distortion:{on:false}, chorus:{on:false}, phaser:{on:false}, delay:{on:true,time:0.18,feedback:0.12,mix:0.3}, reverb:{on:true,room:0.35,decay:0.3,mix:0.2}, tremolo:{on:true,rate:4,depth:0.45}, eq:{on:true,bass:0,mid:0,treble:4}, noisegate:{on:false}, flanger:{on:false}, fuzz:{on:false}, autowah:{on:false} },
+  reggae:  { _amp:{model:'fender',  channel:'clean',  knobs:{gain:3,volume:6,presence:3,bass:8,mid:3,treble:2}},  compressor:{on:true,threshold:-20,ratio:4}, overdrive:{on:false}, distortion:{on:false}, chorus:{on:true,rate:0.5,depth:0.3,mix:0.25}, phaser:{on:false}, delay:{on:true,time:0.65,feedback:0.5,mix:0.55}, reverb:{on:true,room:0.5,decay:0.5,mix:0.3}, tremolo:{on:false}, eq:{on:true,bass:6,mid:-2,treble:-2}, noisegate:{on:false}, flanger:{on:false}, fuzz:{on:false}, autowah:{on:false} },
 };
 
 const SLIDER_MAP = {
@@ -50,6 +73,10 @@ const SLIDER_MAP = {
   reverb:     {'reverb-room':'room','reverb-decay':'decay','reverb-mix':'mix'},
   tremolo:    {'tremolo-rate':'rate','tremolo-depth':'depth'},
   eq:         {'eq-bass':'bass','eq-mid':'mid','eq-treble':'treble'},
+  noisegate:  {'ng-threshold':'threshold','ng-release':'release'},
+  flanger:    {'flanger-rate':'rate','flanger-depth':'depth','flanger-feedback':'feedback','flanger-mix':'mix'},
+  fuzz:       {'fuzz-drive':'drive','fuzz-tone':'tone','fuzz-level':'level'},
+  autowah:    {'autowah-sensitivity':'sensitivity','autowah-freq-min':'freqMin','autowah-freq-max':'freqMax','autowah-q':'q'},
 };
 
 // ─── Oscilloscope ─────────────────────────────────────────────────────────────
@@ -189,6 +216,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   updateAll();
   startDisplays();
   refreshPresetSelect();
+  initDragDrop();
 
   el('ai-prompt').addEventListener('keydown', e => { if (e.key === 'Enter') aiSuggest(); });
 });
@@ -197,6 +225,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 async function toggleConnect() {
   const btn = document.getElementById('connect-btn');
   if (ctx) {
+    if (ngInterval) { clearInterval(ngInterval); ngInterval = null; }
     stream?.getTracks().forEach(t => t.stop());
     await ctx.close();
     ctx = source = stream = null;
@@ -206,8 +235,16 @@ async function toggleConnect() {
   }
   try {
     const inputId  = document.getElementById('input-device').value;
-    const outputId = document.getElementById('output-device').value;
-    ctx = new AudioContext({ sampleRate: 44100, latencyHint: 'interactive' });
+    let   outputId = document.getElementById('output-device').value;
+
+    // Prevent feedback loop: never route output back to the same USB device as input
+    if (inputId && outputId && inputId === outputId) {
+      outputId = '';  // fall back to system default (built-in)
+      document.getElementById('output-device').value = '';
+      setStatus('⚠ Sortie remise sur défaut (même périphérique que l\'entrée évite la boucle)');
+    }
+
+    ctx = new AudioContext({ latencyHint: 'interactive' });
     if (ctx.setSinkId && outputId) await ctx.setSinkId(outputId).catch(() => {});
     stream = await navigator.mediaDevices.getUserMedia({
       audio: { deviceId: inputId ? { exact: inputId } : undefined,
@@ -234,8 +271,162 @@ function bqf(type, freq, Q, gainVal) {
   if (Q !== null) f.Q.value = Q; f.gain.value = gainVal; return f;
 }
 
+function applyInputTrim() {
+  const db  = +el('input-trim').value;
+  const lin = Math.pow(10, db / 20);
+  setText('input-trim-val', (db >= 0 ? '+' : '') + db + ' dB');
+  if (n.in) n.in.gain.value = lin;
+}
+
+const EFFECT_BUILDERS = {
+  compressor(prev) {
+    n.compDry = g(1); n.compWet = g(0);
+    n.compNode = ctx.createDynamicsCompressor();
+    n.compNode.attack.value = 0.003; n.compNode.release.value = 0.25; n.compNode.knee.value = 10;
+    n.compOut = g();
+    prev.connect(n.compDry); n.compDry.connect(n.compOut);
+    prev.connect(n.compWet); n.compWet.connect(n.compNode); n.compNode.connect(n.compOut);
+    return n.compOut;
+  },
+  overdrive(prev) {
+    n.odDry = g(1); n.odWet = g(0);
+    n.odShape = ctx.createWaveShaper(); n.odShape.oversample = '2x';
+    n.odTone  = bqf('lowpass', 5000, 0.7, 0);
+    n.odLevel = g(0.8); n.odOut = g();
+    prev.connect(n.odDry);  n.odDry.connect(n.odOut);
+    prev.connect(n.odWet);  n.odWet.connect(n.odShape);
+    n.odShape.connect(n.odTone); n.odTone.connect(n.odLevel); n.odLevel.connect(n.odOut);
+    return n.odOut;
+  },
+  distortion(prev) {
+    n.dstDry = g(1); n.dstWet = g(0);
+    n.dstShape = ctx.createWaveShaper(); n.dstShape.oversample = '4x';
+    n.dstTone  = bqf('lowpass', 3000, 0.7, 0);
+    n.dstLevel = g(0.7); n.dstOut = g();
+    prev.connect(n.dstDry);  n.dstDry.connect(n.dstOut);
+    prev.connect(n.dstWet);  n.dstWet.connect(n.dstShape);
+    n.dstShape.connect(n.dstTone); n.dstTone.connect(n.dstLevel); n.dstLevel.connect(n.dstOut);
+    return n.dstOut;
+  },
+  chorus(prev) {
+    n.chorLFO = ctx.createOscillator(); n.chorLFO.type = 'sine'; n.chorLFO.frequency.value = 1.5;
+    n.chorDepth = g(0.003);
+    n.chorDelay = ctx.createDelay(0.1); n.chorDelay.delayTime.value = 0.025;
+    n.chorWet = g(0); n.chorOut = g();
+    n.chorLFO.connect(n.chorDepth); n.chorDepth.connect(n.chorDelay.delayTime); n.chorLFO.start();
+    prev.connect(n.chorOut);
+    prev.connect(n.chorDelay); n.chorDelay.connect(n.chorWet); n.chorWet.connect(n.chorOut);
+    return n.chorOut;
+  },
+  phaser(prev) {
+    n.phasLFO   = ctx.createOscillator(); n.phasLFO.type = 'sine'; n.phasLFO.frequency.value = 0.5;
+    n.phasDepth = g(400);
+    n.phasAP    = [800, 1600, 3200, 6400].map(f => {
+      const ap = ctx.createBiquadFilter(); ap.type = 'allpass';
+      ap.frequency.value = f; ap.Q.value = 0.5; return ap;
+    });
+    n.phasWet = g(0); n.phasOut = g();
+    n.phasLFO.connect(n.phasDepth);
+    n.phasAP.forEach(ap => n.phasDepth.connect(ap.frequency));
+    for (let i = 0; i < n.phasAP.length - 1; i++) n.phasAP[i].connect(n.phasAP[i + 1]);
+    n.phasLFO.start();
+    prev.connect(n.phasOut);
+    prev.connect(n.phasAP[0]);
+    n.phasAP[n.phasAP.length - 1].connect(n.phasWet); n.phasWet.connect(n.phasOut);
+    return n.phasOut;
+  },
+  delay(prev) {
+    n.dlNode = ctx.createDelay(2.0); n.dlFb = g(0); n.dlMix = g(0); n.dlOut = g();
+    prev.connect(n.dlOut);
+    prev.connect(n.dlNode); n.dlNode.connect(n.dlFb); n.dlFb.connect(n.dlNode);
+    n.dlNode.connect(n.dlMix); n.dlMix.connect(n.dlOut);
+    return n.dlOut;
+  },
+  reverb(prev) {
+    n.rvConv = ctx.createConvolver(); n.rvConv.buffer = makeIR(2, 0.5);
+    n.rvWet = g(0); n.rvOut = g();
+    prev.connect(n.rvOut);
+    prev.connect(n.rvConv); n.rvConv.connect(n.rvWet); n.rvWet.connect(n.rvOut);
+    return n.rvOut;
+  },
+  tremolo(prev) {
+    n.tremLFO = ctx.createOscillator(); n.tremLFO.type = 'sine'; n.tremLFO.frequency.value = 5;
+    n.tremDepth = g(0); n.tremGain = g(1);
+    n.tremLFO.connect(n.tremDepth); n.tremDepth.connect(n.tremGain.gain); n.tremLFO.start();
+    prev.connect(n.tremGain);
+    return n.tremGain;
+  },
+  eq(prev) {
+    n.eqBass = bqf('lowshelf', 200, null, 0);
+    n.eqMid  = bqf('peaking', 1000, 1,   0);
+    n.eqHigh = bqf('highshelf', 4000, null, 0);
+    prev.connect(n.eqBass); n.eqBass.connect(n.eqMid); n.eqMid.connect(n.eqHigh);
+    return n.eqHigh;
+  },
+  noisegate(prev) {
+    n.ngAnalyser = ctx.createAnalyser(); n.ngAnalyser.fftSize = 256;
+    n.ngGate = g(1);
+    prev.connect(n.ngAnalyser); n.ngAnalyser.connect(n.ngGate);
+    startNoiseGateLoop();
+    return n.ngGate;
+  },
+  flanger(prev) {
+    n.flanLFO = ctx.createOscillator(); n.flanLFO.type = 'sine'; n.flanLFO.frequency.value = 0.5;
+    n.flanDepth = g(0.003);
+    n.flanDelay = ctx.createDelay(0.05); n.flanDelay.delayTime.value = 0.005;
+    n.flanFb = g(0.5); n.flanWet = g(0); n.flanOut = g();
+    n.flanLFO.connect(n.flanDepth); n.flanDepth.connect(n.flanDelay.delayTime); n.flanLFO.start();
+    n.flanDelay.connect(n.flanFb); n.flanFb.connect(n.flanDelay);
+    prev.connect(n.flanOut);
+    prev.connect(n.flanDelay); n.flanDelay.connect(n.flanWet); n.flanWet.connect(n.flanOut);
+    return n.flanOut;
+  },
+  fuzz(prev) {
+    n.fuzzDry = g(1); n.fuzzWet = g(0);
+    n.fuzzShape = ctx.createWaveShaper(); n.fuzzShape.oversample = '4x';
+    n.fuzzShape.curve = makeFuzzCurve(200);
+    n.fuzzTone = bqf('lowpass', 3000, 0.7, 0);
+    n.fuzzLevel = g(0.7); n.fuzzOut = g();
+    prev.connect(n.fuzzDry); n.fuzzDry.connect(n.fuzzOut);
+    prev.connect(n.fuzzWet); n.fuzzWet.connect(n.fuzzShape);
+    n.fuzzShape.connect(n.fuzzTone); n.fuzzTone.connect(n.fuzzLevel); n.fuzzLevel.connect(n.fuzzOut);
+    return n.fuzzOut;
+  },
+  autowah(prev) {
+    n.wahFilter = bqf('bandpass', 800, 8, 0);
+    n.wahDry = g(1); n.wahWet = g(0); n.wahOut = g();
+    n.wahAnalyser = ctx.createAnalyser(); n.wahAnalyser.fftSize = 256;
+    prev.connect(n.wahDry); n.wahDry.connect(n.wahOut);
+    prev.connect(n.wahAnalyser);
+    n.wahAnalyser.connect(n.wahFilter); n.wahFilter.connect(n.wahWet); n.wahWet.connect(n.wahOut);
+    startAutoWahLoop();
+    return n.wahOut;
+  },
+};
+
 function buildChain() {
-  n.in = g();
+  const trimDb = +el('input-trim').value;
+  setText('input-trim-val', (trimDb >= 0 ? '+' : '') + trimDb + ' dB');
+  n.in = g(Math.pow(10, trimDb / 20));
+
+  // ── PRE-FILTER: kill USB hum before anything else ────────────────────────
+  n.hpf    = bqf('highpass',  80,   0.7, 0);   // cut sub-bass rumble
+  n.notch1 = bqf('notch',     50,   30,  0);   // 50 Hz mains hum (EU)
+  n.notch2 = bqf('notch',     60,   30,  0);   // 60 Hz mains hum (US)
+  n.notch3 = bqf('notch',     100,  20,  0);   // 2nd harmonic 50 Hz
+  n.notch4 = bqf('notch',     120,  20,  0);   // 2nd harmonic 60 Hz
+  n.in.connect(n.hpf);
+  n.hpf.connect(n.notch1); n.notch1.connect(n.notch2);
+  n.notch2.connect(n.notch3); n.notch3.connect(n.notch4);
+
+  // ── INPUT LIMITER: prevent hot USB signal from clipping gain stages ───────
+  n.limiter = ctx.createDynamicsCompressor();
+  n.limiter.threshold.value = -18;  // clamp anything above -18 dBFS
+  n.limiter.ratio.value     = 20;   // near-hard limiting
+  n.limiter.attack.value    = 0.001;
+  n.limiter.release.value   = 0.05;
+  n.limiter.knee.value      = 2;
+  n.notch4.connect(n.limiter);
 
   // ── AMP SECTION ──────────────────────────────────────────────────────────
   n.ampPreGain  = g(0.6);
@@ -243,93 +434,15 @@ function buildChain() {
   n.ampMid      = bqf('peaking',    500,  1,    0);
   n.ampTreble   = bqf('highshelf', 3000,  null, 0);
   n.ampPresence = bqf('highshelf', 6500,  null, 0);
-  n.in.connect(n.ampPreGain);
+  n.limiter.connect(n.ampPreGain);
   n.ampPreGain.connect(n.ampBass); n.ampBass.connect(n.ampMid);
   n.ampMid.connect(n.ampTreble);  n.ampTreble.connect(n.ampPresence);
   let prev = n.ampPresence;
 
-  // ── 1. COMPRESSEUR ───────────────────────────────────────────────────────
-  n.compDry = g(1); n.compWet = g(0);
-  n.compNode = ctx.createDynamicsCompressor();
-  n.compNode.attack.value = 0.003; n.compNode.release.value = 0.25; n.compNode.knee.value = 10;
-  n.compOut = g();
-  prev.connect(n.compDry); n.compDry.connect(n.compOut);
-  prev.connect(n.compWet); n.compWet.connect(n.compNode); n.compNode.connect(n.compOut);
-  prev = n.compOut;
-
-  // ── 2. OVERDRIVE (tanh soft clip) ────────────────────────────────────────
-  n.odDry = g(1); n.odWet = g(0);
-  n.odShape = ctx.createWaveShaper(); n.odShape.oversample = '2x';
-  n.odTone  = bqf('lowpass', 5000, 0.7, 0);
-  n.odLevel = g(0.8); n.odOut = g();
-  prev.connect(n.odDry);  n.odDry.connect(n.odOut);
-  prev.connect(n.odWet);  n.odWet.connect(n.odShape);
-  n.odShape.connect(n.odTone); n.odTone.connect(n.odLevel); n.odLevel.connect(n.odOut);
-  prev = n.odOut;
-
-  // ── 3. DISTORSION (hard clip) ────────────────────────────────────────────
-  n.dstDry = g(1); n.dstWet = g(0);
-  n.dstShape = ctx.createWaveShaper(); n.dstShape.oversample = '4x';
-  n.dstTone  = bqf('lowpass', 3000, 0.7, 0);
-  n.dstLevel = g(0.7); n.dstOut = g();
-  prev.connect(n.dstDry);  n.dstDry.connect(n.dstOut);
-  prev.connect(n.dstWet);  n.dstWet.connect(n.dstShape);
-  n.dstShape.connect(n.dstTone); n.dstTone.connect(n.dstLevel); n.dstLevel.connect(n.dstOut);
-  prev = n.dstOut;
-
-  // ── 4. CHORUS ────────────────────────────────────────────────────────────
-  n.chorLFO = ctx.createOscillator(); n.chorLFO.type = 'sine'; n.chorLFO.frequency.value = 1.5;
-  n.chorDepth = g(0.003);
-  n.chorDelay = ctx.createDelay(0.1); n.chorDelay.delayTime.value = 0.025;
-  n.chorWet = g(0); n.chorOut = g();
-  n.chorLFO.connect(n.chorDepth); n.chorDepth.connect(n.chorDelay.delayTime); n.chorLFO.start();
-  prev.connect(n.chorOut);
-  prev.connect(n.chorDelay); n.chorDelay.connect(n.chorWet); n.chorWet.connect(n.chorOut);
-  prev = n.chorOut;
-
-  // ── 5. PHASER (4 allpass stages + LFO) ───────────────────────────────────
-  n.phasLFO   = ctx.createOscillator(); n.phasLFO.type = 'sine'; n.phasLFO.frequency.value = 0.5;
-  n.phasDepth = g(400);
-  n.phasAP    = [800, 1600, 3200, 6400].map(f => {
-    const ap = ctx.createBiquadFilter(); ap.type = 'allpass';
-    ap.frequency.value = f; ap.Q.value = 0.5; return ap;
-  });
-  n.phasWet = g(0); n.phasOut = g();
-  n.phasLFO.connect(n.phasDepth);
-  n.phasAP.forEach(ap => n.phasDepth.connect(ap.frequency));
-  for (let i = 0; i < n.phasAP.length - 1; i++) n.phasAP[i].connect(n.phasAP[i + 1]);
-  n.phasLFO.start();
-  prev.connect(n.phasOut);
-  prev.connect(n.phasAP[0]);
-  n.phasAP[n.phasAP.length - 1].connect(n.phasWet); n.phasWet.connect(n.phasOut);
-  prev = n.phasOut;
-
-  // ── 6. DELAY ─────────────────────────────────────────────────────────────
-  n.dlNode = ctx.createDelay(2.0); n.dlFb = g(0); n.dlMix = g(0); n.dlOut = g();
-  prev.connect(n.dlOut);
-  prev.connect(n.dlNode); n.dlNode.connect(n.dlFb); n.dlFb.connect(n.dlNode);
-  n.dlNode.connect(n.dlMix); n.dlMix.connect(n.dlOut);
-  prev = n.dlOut;
-
-  // ── 7. REVERB ────────────────────────────────────────────────────────────
-  n.rvConv = ctx.createConvolver(); n.rvConv.buffer = makeIR(2, 0.5);
-  n.rvWet = g(0); n.rvOut = g();
-  prev.connect(n.rvOut);
-  prev.connect(n.rvConv); n.rvConv.connect(n.rvWet); n.rvWet.connect(n.rvOut);
-  prev = n.rvOut;
-
-  // ── 8. TREMOLO ───────────────────────────────────────────────────────────
-  n.tremLFO = ctx.createOscillator(); n.tremLFO.type = 'sine'; n.tremLFO.frequency.value = 5;
-  n.tremDepth = g(0); n.tremGain = g(1);
-  n.tremLFO.connect(n.tremDepth); n.tremDepth.connect(n.tremGain.gain); n.tremLFO.start();
-  prev.connect(n.tremGain); prev = n.tremGain;
-
-  // ── 9. EQ ────────────────────────────────────────────────────────────────
-  n.eqBass = bqf('lowshelf', 200, null, 0);
-  n.eqMid  = bqf('peaking', 1000, 1,   0);
-  n.eqHigh = bqf('highshelf', 4000, null, 0);
-  prev.connect(n.eqBass); n.eqBass.connect(n.eqMid); n.eqMid.connect(n.eqHigh);
-  prev = n.eqHigh;
+  // ── EFFECTS (in pedalOrder) ───────────────────────────────────────────────
+  for (const name of pedalOrder) {
+    prev = EFFECT_BUILDERS[name](prev);
+  }
 
   // ── OUTPUT ───────────────────────────────────────────────────────────────
   n.ampMaster = g(0.6);
@@ -342,9 +455,72 @@ function buildChain() {
   Object.keys(state).forEach(syncEffect);
 }
 
+function rebuildChain() {
+  ['chorLFO','phasLFO','tremLFO','flanLFO'].forEach(k => { try { if (n[k]) n[k].stop(); } catch(e){} });
+  if (ngInterval)  { clearInterval(ngInterval);  ngInterval  = null; }
+  if (wahInterval) { clearInterval(wahInterval); wahInterval = null; }
+  try { source.disconnect(); } catch(e) {}
+  buildChain();
+}
+
+function applyGridPositions() {
+  for (const [name, pos] of Object.entries(pedalGridPositions)) {
+    const el2 = document.getElementById('pedal-' + name);
+    if (el2) { el2.style.gridColumn = pos.col; el2.style.gridRow = pos.row; }
+  }
+}
+
+let dragSrc = null;
+
+function initDragDrop() {
+  applyGridPositions();
+  document.querySelectorAll('.pedal').forEach(pedal => {
+    pedal.addEventListener('dragstart', e => {
+      dragSrc = pedal.id.replace('pedal-', '');
+      pedal.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    pedal.addEventListener('dragend', () => {
+      dragSrc = null;
+      document.querySelectorAll('.pedal').forEach(p => p.classList.remove('dragging','drag-over'));
+    });
+    pedal.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const t = pedal.id.replace('pedal-', '');
+      if (t !== dragSrc) pedal.classList.add('drag-over');
+    });
+    pedal.addEventListener('dragleave', () => pedal.classList.remove('drag-over'));
+    pedal.addEventListener('drop', e => {
+      e.preventDefault();
+      pedal.classList.remove('drag-over');
+      const target = pedal.id.replace('pedal-', '');
+      if (!dragSrc || dragSrc === target) return;
+      // swap grid positions
+      const tmp = pedalGridPositions[dragSrc];
+      pedalGridPositions[dragSrc] = pedalGridPositions[target];
+      pedalGridPositions[target] = tmp;
+      applyGridPositions();
+      // swap in audio order
+      const iA = pedalOrder.indexOf(dragSrc), iB = pedalOrder.indexOf(target);
+      if (iA !== -1 && iB !== -1) [pedalOrder[iA], pedalOrder[iB]] = [pedalOrder[iB], pedalOrder[iA]];
+      if (ctx && source) rebuildChain();
+    });
+  });
+}
+
 // ─── Amp section ─────────────────────────────────────────────────────────────
 function applyAmpSettings() {
   if (!ctx) return;
+  if (directMode) {
+    if (n.ampPreGain)  n.ampPreGain.gain.value  = 1;
+    if (n.ampMaster)   n.ampMaster.gain.value   = 1;
+    if (n.ampBass)     n.ampBass.gain.value     = 0;
+    if (n.ampMid)      n.ampMid.gain.value      = 0;
+    if (n.ampTreble)   n.ampTreble.gain.value   = 0;
+    if (n.ampPresence) n.ampPresence.gain.value = 0;
+    return;
+  }
   const chMult = CHANNEL_GAIN[currentChannel] ?? 0.3;
   if (n.ampPreGain)  n.ampPreGain.gain.value  = (ampState.gain / 10) * chMult * 2 + 0.01;
   if (n.ampMaster)   n.ampMaster.gain.value   = ampState.volume / 10;
@@ -352,6 +528,25 @@ function applyAmpSettings() {
   if (n.ampMid)      n.ampMid.gain.value      = (ampState.mid - 5) * 2;
   if (n.ampTreble)   n.ampTreble.gain.value   = (ampState.treble - 5) * 2;
   if (n.ampPresence) n.ampPresence.gain.value = (ampState.presence - 5) * 1.5;
+}
+
+function toggleDirectMode() {
+  directMode = !directMode;
+  const btn = el('btn-direct');
+  btn.classList.toggle('active', directMode);
+  document.querySelector('.amp-head').classList.toggle('direct-mode', directMode);
+  document.body.classList.toggle('direct-mode', directMode);
+
+  if (directMode) {
+    // turn off amp-like pedals — Spider V30 handles the tone
+    ['compressor', 'overdrive', 'distortion'].forEach(name => {
+      if (state[name]) toggleEffect(name);
+    });
+    setStatus('Mode Direct — effets seuls actifs');
+  } else {
+    setStatus('Mode Ampli');
+  }
+  applyAmpSettings();
 }
 
 function setAmpModel(model) {
@@ -407,6 +602,34 @@ function makeODCurve(drive) {
   }
   return c;
 }
+function makeFuzzCurve(amount) {
+  const c = new Float32Array(512);
+  for (let i = 0; i < 512; i++) {
+    const x = (i * 2) / 512 - 1;
+    c[i] = x < 0
+      ? Math.max(Math.tanh(x * amount * 0.5), -0.92)
+      : Math.min(Math.tanh(x * amount), 0.55);
+  }
+  return c;
+}
+function startAutoWahLoop() {
+  if (wahInterval) clearInterval(wahInterval);
+  const buf = new Float32Array(64);
+  wahInterval = setInterval(() => {
+    if (!ctx || !n.wahAnalyser || !n.wahFilter) return;
+    n.wahAnalyser.getFloatTimeDomainData(buf);
+    let rms = 0;
+    for (let i = 0; i < buf.length; i++) rms += buf[i] * buf[i];
+    rms = Math.sqrt(rms / buf.length);
+    const sens    = +(el('autowah-sensitivity')?.value ?? 3);
+    const freqMin = +(el('autowah-freq-min')?.value    ?? 300);
+    const freqMax = +(el('autowah-freq-max')?.value    ?? 3000);
+    // exponential response: maps quiet→loud across full freq range
+    const norm    = Math.min(1 - Math.exp(-rms * sens * 30), 1);
+    const target  = freqMin + norm * (freqMax - freqMin);
+    n.wahFilter.frequency.setTargetAtTime(target, ctx.currentTime, 0.015);
+  }, 25);
+}
 
 // ─── Sync audio nodes ────────────────────────────────────────────────────────
 function syncEffect(name) {
@@ -436,6 +659,16 @@ function syncEffect(name) {
       n.eqBass.gain.value = on ? +el('eq-bass').value : 0;
       n.eqMid.gain.value  = on ? +el('eq-mid').value  : 0;
       n.eqHigh.gain.value = on ? +el('eq-treble').value : 0; break;
+    case 'noisegate':
+      if (!on && n.ngGate) n.ngGate.gain.setTargetAtTime(1, ctx.currentTime, 0.005);
+      break;
+    case 'flanger':
+      n.flanWet.gain.value = on ? +el('flanger-mix').value : 0; break;
+    case 'fuzz':
+      n.fuzzDry.gain.value = on ? 0 : 1; n.fuzzWet.gain.value = on ? 1 : 0;
+      if (n.fuzzLevel) n.fuzzLevel.gain.value = on ? +el('fuzz-level').value : 1; break;
+    case 'autowah':
+      n.wahDry.gain.value = on ? 0 : 1; n.wahWet.gain.value = on ? 1 : 0; break;
   }
 }
 
@@ -453,7 +686,28 @@ function applyGenre(key) {
   const preset = GENRES[key]; if (!preset) return;
   document.querySelectorAll('.genre-btn').forEach(b => b.classList.remove('active'));
   el('genre-' + key).classList.add('active');
+
+  // apply amp model, channel, and knobs
+  if (preset._amp) {
+    setAmpModel(preset._amp.model);
+    setChannel(preset._amp.channel);
+    if (preset._amp.knobs) {
+      document.querySelectorAll('.amp-knob-wrap').forEach(wrap => {
+        const param = wrap.dataset.param;
+        if (!(param in preset._amp.knobs)) return;
+        const v = preset._amp.knobs[param];
+        const min = +wrap.dataset.min, max = +wrap.dataset.max;
+        const pct = (v - min) / (max - min);
+        document.getElementById('dial-' + param).style.transform = `rotate(${-135 + pct * 270}deg)`;
+        wrap.querySelector('.knob-ring').style.setProperty('--fill', (pct * 270) + 'deg');
+        document.getElementById('kv-' + param).textContent = v.toFixed(1);
+        ampState[param] = v;
+      });
+    }
+  }
+
   for (const [name, settings] of Object.entries(preset)) {
+    if (name === '_amp') continue;
     state[name] = settings.on;
     el(name + '-toggle').textContent = settings.on ? 'ON' : 'OFF';
     el(name + '-toggle').classList.toggle('on', settings.on);
@@ -526,9 +780,94 @@ function updateEQ() {
   const f = v => (v>=0?'+':'')+Math.round(v)+' dB';
   setText('eq-bass-val', f(bass)); setText('eq-mid-val', f(mid)); setText('eq-treble-val', f(treble));
 }
+function updateNoisegate() {
+  const thr = +el('ng-threshold').value;
+  const rel = +el('ng-release').value;
+  setText('ng-threshold-val', thr + ' dB');
+  setText('ng-release-val', Math.round(rel * 1000) + ' ms');
+}
+
+function startNoiseGateLoop() {
+  if (ngInterval) clearInterval(ngInterval);
+  const buf = new Float32Array(256);
+  let gateOpen = true;
+
+  ngInterval = setInterval(() => {
+    if (!ctx || !n.ngAnalyser || !n.ngGate) return;
+
+    if (!state.noisegate) {
+      if (!gateOpen) {
+        gateOpen = true;
+        n.ngGate.gain.cancelScheduledValues(ctx.currentTime);
+        n.ngGate.gain.setTargetAtTime(1, ctx.currentTime, 0.005);
+      }
+      return;
+    }
+
+    n.ngAnalyser.getFloatTimeDomainData(buf);
+    const rms = Math.sqrt(buf.reduce((s, v) => s + v * v, 0) / buf.length);
+    const thresholdLinear = Math.pow(10, +el('ng-threshold').value / 20);
+    const release = +el('ng-release').value;
+    const shouldOpen = rms > thresholdLinear;
+
+    // live level display
+    const dbVal = rms > 0 ? Math.round(20 * Math.log10(rms)) : -99;
+    setText('ng-level-val', (dbVal > -99 ? dbVal : '−∞') + ' dB');
+    const statusEl = el('ng-gate-status');
+    if (statusEl) {
+      statusEl.textContent = shouldOpen ? 'OPEN' : 'CLOSED';
+      statusEl.className   = shouldOpen ? 'ng-gate-open' : 'ng-gate-closed';
+    }
+
+    if (shouldOpen !== gateOpen) {
+      gateOpen = shouldOpen;
+      n.ngGate.gain.cancelScheduledValues(ctx.currentTime);
+      n.ngGate.gain.setTargetAtTime(
+        shouldOpen ? 1 : 0,
+        ctx.currentTime,
+        shouldOpen ? 0.001 : release
+      );
+    }
+  }, 10);
+}
+
+function updateFlanger() {
+  const rate = +(el('flanger-rate')?.value ?? 0.5), depth = +(el('flanger-depth')?.value ?? 0.5);
+  const fb   = +(el('flanger-feedback')?.value ?? 0.5), mix = +(el('flanger-mix')?.value ?? 0.5);
+  setText('flanger-rate-val',     rate.toFixed(1) + ' Hz');
+  setText('flanger-depth-val',    Math.round(depth * 100) + '%');
+  setText('flanger-feedback-val', Math.round(fb * 100) + '%');
+  setText('flanger-mix-val',      Math.round(mix * 100) + '%');
+  if (!n.flanLFO) return;
+  n.flanLFO.frequency.value = rate;
+  n.flanDepth.gain.value    = depth * 0.006;
+  n.flanFb.gain.value       = fb * 0.9;
+  if (state.flanger) n.flanWet.gain.value = mix;
+}
+function updateFuzz() {
+  const drive = +(el('fuzz-drive')?.value ?? 0.7), tone = +(el('fuzz-tone')?.value ?? 3000);
+  const level = +(el('fuzz-level')?.value ?? 0.7);
+  setText('fuzz-drive-val', Math.round(drive * 100) + '%');
+  setText('fuzz-tone-val',  Math.round(tone) + ' Hz');
+  setText('fuzz-level-val', Math.round(level * 100) + '%');
+  if (!n.fuzzShape) return;
+  n.fuzzShape.curve = makeFuzzCurve(20 + drive * 300);
+  if (n.fuzzTone)  n.fuzzTone.frequency.value = tone;
+  if (n.fuzzLevel && state.fuzz) n.fuzzLevel.gain.value = level;
+}
+function updateAutoWah() {
+  const sens = +(el('autowah-sensitivity')?.value ?? 3), q = +(el('autowah-q')?.value ?? 8);
+  const fMin = +(el('autowah-freq-min')?.value ?? 300), fMax = +(el('autowah-freq-max')?.value ?? 3000);
+  setText('autowah-sensitivity-val', sens.toFixed(1));
+  setText('autowah-freq-min-val',    fMin + ' Hz');
+  setText('autowah-freq-max-val',    fMax + ' Hz');
+  setText('autowah-q-val',           q.toFixed(1));
+  if (n.wahFilter) n.wahFilter.Q.value = q;
+}
 function updateAll() {
   updateCompressor(); updateOverdrive(); updateDistortion(); updateChorus();
   updatePhaser(); updateDelay(); updateReverb(); updateTremolo(); updateEQ();
+  updateNoisegate(); updateFlanger(); updateFuzz(); updateAutoWah();
 }
 
 const el      = id => document.getElementById(id);
@@ -568,6 +907,8 @@ function _captureState() {
   }
   return {
     id: Date.now().toString(),
+    inputDeviceId:  el('input-device').value  || null,
+    outputDeviceId: el('output-device').value || null,
     ampModel: currentModel,
     channel: currentChannel,
     amp: { ...ampState },
@@ -596,7 +937,33 @@ function savePreset() {
   setTimeout(() => { btn.textContent = 'SAVE'; btn.classList.remove('preset-flash-ok'); }, 900);
 }
 
-function _applyPresetData(p) {
+async function _applyPresetData(p) {
+  // restore I/O device selectors if the saved device is still available
+  let deviceChanged = false;
+  if (p.inputDeviceId) {
+    const inSel = el('input-device');
+    if ([...inSel.options].some(o => o.value === p.inputDeviceId)) {
+      if (inSel.value !== p.inputDeviceId) { inSel.value = p.inputDeviceId; deviceChanged = true; }
+    }
+  }
+  if (p.outputDeviceId) {
+    const outSel = el('output-device');
+    if ([...outSel.options].some(o => o.value === p.outputDeviceId)) {
+      if (outSel.value !== p.outputDeviceId) { outSel.value = p.outputDeviceId; deviceChanged = true; }
+    }
+  }
+
+  // if already connected and device changed, reconnect with new device
+  if (ctx && deviceChanged) {
+    stream?.getTracks().forEach(t => t.stop());
+    await ctx.close();
+    ctx = source = stream = null;
+    document.getElementById('power-led').classList.remove('on');
+    const btn = document.getElementById('connect-btn');
+    btn.textContent = 'CONNECT'; btn.classList.remove('active');
+    await toggleConnect();
+  }
+
   if (p.ampModel) setAmpModel(p.ampModel);
   if (p.channel)  setChannel(p.channel);
   if (p.amp) {
@@ -613,7 +980,21 @@ function _applyPresetData(p) {
     });
     applyAmpSettings();
   }
-  for (const [name, settings] of Object.entries(p.effects || {})) {
+  const EFFECT_DEFAULTS = {
+    compressor: { on: false, threshold: -24, ratio: 4 },
+    overdrive:  { on: false, drive: 0.5, tone: 5000, level: 0.8 },
+    distortion: { on: false, drive: 0.5, tone: 3000, level: 0.7 },
+    chorus:     { on: false, rate: 3.3, depth: 0.5, mix: 0.5 },
+    phaser:     { on: false, rate: 0.5, depth: 0.5, mix: 0.5 },
+    delay:      { on: false, time: 0.3, feedback: 0.4, mix: 0.5 },
+    reverb:     { on: false, room: 0.5, decay: 0.5, mix: 0.3 },
+    tremolo:    { on: false, rate: 5, depth: 0.5 },
+    eq:         { on: false, bass: 0, mid: 0, treble: 0 },
+    noisegate:  { on: false, threshold: -50, release: 0.1 },
+  };
+  const effects = p.effects || {};
+  for (const [name, defaults] of Object.entries(EFFECT_DEFAULTS)) {
+    const settings = { ...defaults, ...effects[name] };
     state[name] = settings.on;
     el(name + '-toggle').textContent = settings.on ? 'ON' : 'OFF';
     el(name + '-toggle').classList.toggle('on', settings.on);
@@ -626,12 +1007,12 @@ function _applyPresetData(p) {
   if (ctx) Object.keys(state).forEach(syncEffect);
 }
 
-function loadPreset() {
+async function loadPreset() {
   const id = el('preset-select').value;
   if (!id) return;
   const p = _readPresets().find(x => x.id === id);
   if (!p) return;
-  _applyPresetData(p);
+  await _applyPresetData(p);
   const btn = el('preset-load-btn');
   btn.textContent = 'LOADED'; btn.classList.add('preset-flash-ok');
   setTimeout(() => { btn.textContent = 'LOAD'; btn.classList.remove('preset-flash-ok'); }, 900);
@@ -691,7 +1072,7 @@ function _presetSummary(p) {
       .filter(([, v]) => v && v.on)
       .map(([k]) => ({ compressor:'COMP', overdrive:'OD', distortion:'DIST',
                        chorus:'CHORUS', phaser:'PHASER', delay:'DELAY',
-                       reverb:'REVERB', tremolo:'TREM', eq:'EQ' }[k] || k.toUpperCase()))
+                       reverb:'REVERB', tremolo:'TREM', eq:'EQ', noisegate:'GATE' }[k] || k.toUpperCase()))
       .join('  ');
     if (active) parts.push(active);
   }
@@ -721,10 +1102,10 @@ function _addMsg(role, text, preset, isError) {
       expl.textContent = text;
       div.appendChild(expl);
     }
-    if (preset && preset._source) {
+    if (preset && preset._source && preset._source !== 'dataset') {
       const badge = document.createElement('span');
-      badge.className = preset._source === 'dataset' ? 'ai-badge-dataset' : 'ai-badge-ai';
-      badge.textContent = preset._source === 'dataset' ? '📀 Dataset vérifié' : '✦ Généré par IA';
+      badge.className = 'ai-badge-ai';
+      badge.textContent = '✦ Généré par IA';
       div.appendChild(badge);
     }
 
@@ -740,8 +1121,8 @@ function _addMsg(role, text, preset, isError) {
       const btn = document.createElement('button');
       btn.className = 'ai-apply-btn';
       btn.innerHTML = '⚡ Appliquer automatiquement';
-      btn.onclick = () => {
-        _applyPresetData(preset);
+      btn.onclick = async () => {
+        await _applyPresetData(preset);
         btn.innerHTML = '✓ Appliqué !';
         btn.classList.add('applied');
         setTimeout(() => { btn.innerHTML = '⚡ Appliquer automatiquement'; btn.classList.remove('applied'); }, 2500);

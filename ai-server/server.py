@@ -103,11 +103,13 @@ Respond ONLY with a valid JSON object:
       "delay":      { "on": true/false, "time": <0.05-1>, "feedback": <0-0.9>, "mix": <0-1> },
       "reverb":     { "on": true/false, "room": <0.1-1>, "decay": <0.1-1>, "mix": <0-1> },
       "tremolo":    { "on": true/false, "rate": <0.5-15>, "depth": <0-1> },
-      "eq":         { "on": true/false, "bass": <-15 to 15>, "mid": <-15 to 15>, "treble": <-15 to 15> }
+      "eq":         { "on": true/false, "bass": <-15 to 15>, "mid": <-15 to 15>, "treble": <-15 to 15> },
+      "noisegate":  { "on": true/false, "threshold": <-80 to -20>, "release": <0.01-0.5> }
     }
   }
 }
 
+IMPORTANT: Always include ALL effects in the response, even if "on" is false. Never omit an effect key.
 Amp model guidelines: fender=clean/blues, marshall=rock/crunch, mesa=metal, vox=indie/britpop, tweed=vintage blues.
 Only activate effects that make sense for the sound. Respond in the user's language."""
 
