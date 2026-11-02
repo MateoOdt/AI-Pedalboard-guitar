@@ -10,11 +10,15 @@ const n = {};
 const state = {
   compressor:false, overdrive:false, distortion:false, chorus:false,
   phaser:false, delay:false, reverb:false, tremolo:false, eq:false,
+  noisegate:false,
 };
+
+let ngInterval = null;
 
 const ampState = { gain:5, volume:6, presence:5, bass:5, mid:5, treble:5 };
 let currentChannel = 'clean';
 let currentModel   = 'fender';
+let directMode     = false;
 
 // ─── Amp models ──────────────────────────────────────────────────────────────
 const AMP_MODELS = {
@@ -29,15 +33,15 @@ const CHANNEL_GAIN = { clean: 0.3, crunch: 0.65, lead: 1.0 };
 
 // ─── Genre presets ────────────────────────────────────────────────────────────
 const GENRES = {
-  clean:   { compressor:{on:false}, overdrive:{on:false}, distortion:{on:false}, chorus:{on:false}, phaser:{on:false}, delay:{on:false}, reverb:{on:true,room:0.3,decay:0.3,mix:0.15}, tremolo:{on:false}, eq:{on:false} },
-  rock:    { compressor:{on:true,threshold:-24,ratio:4}, overdrive:{on:false}, distortion:{on:true,drive:0.55,tone:3500,level:0.75}, chorus:{on:false}, phaser:{on:false}, delay:{on:true,time:0.25,feedback:0.3,mix:0.4}, reverb:{on:true,room:0.4,decay:0.4,mix:0.25}, tremolo:{on:false}, eq:{on:true,bass:3,mid:2,treble:1} },
-  metal:   { compressor:{on:true,threshold:-30,ratio:8}, overdrive:{on:false}, distortion:{on:true,drive:0.9,tone:2500,level:0.8}, chorus:{on:false}, phaser:{on:false}, delay:{on:true,time:0.15,feedback:0.15,mix:0.2}, reverb:{on:false}, tremolo:{on:false}, eq:{on:true,bass:5,mid:-4,treble:3} },
-  blues:   { compressor:{on:true,threshold:-20,ratio:3}, overdrive:{on:true,drive:0.4,tone:4000,level:0.8}, distortion:{on:false}, chorus:{on:false}, phaser:{on:false}, delay:{on:true,time:0.4,feedback:0.4,mix:0.45}, reverb:{on:true,room:0.65,decay:0.55,mix:0.35}, tremolo:{on:false}, eq:{on:true,bass:4,mid:3,treble:-1} },
-  jazz:    { compressor:{on:true,threshold:-18,ratio:3}, overdrive:{on:false}, distortion:{on:false}, chorus:{on:true,rate:0.8,depth:0.35,mix:0.3}, phaser:{on:false}, delay:{on:false}, reverb:{on:true,room:0.3,decay:0.3,mix:0.2}, tremolo:{on:false}, eq:{on:true,bass:3,mid:0,treble:-4} },
-  funk:    { compressor:{on:true,threshold:-26,ratio:6}, overdrive:{on:false}, distortion:{on:false}, chorus:{on:false}, phaser:{on:true,rate:2,depth:0.6,mix:0.5}, delay:{on:false}, reverb:{on:false}, tremolo:{on:false}, eq:{on:true,bass:2,mid:-3,treble:3} },
-  pop:     { compressor:{on:true,threshold:-20,ratio:4}, overdrive:{on:false}, distortion:{on:false}, chorus:{on:true,rate:1.5,depth:0.5,mix:0.4}, phaser:{on:false}, delay:{on:true,time:0.3,feedback:0.25,mix:0.3}, reverb:{on:true,room:0.5,decay:0.45,mix:0.3}, tremolo:{on:false}, eq:{on:true,bass:1,mid:0,treble:2} },
-  country: { compressor:{on:true,threshold:-22,ratio:3}, overdrive:{on:true,drive:0.2,tone:5500,level:0.75}, distortion:{on:false}, chorus:{on:false}, phaser:{on:false}, delay:{on:true,time:0.18,feedback:0.12,mix:0.3}, reverb:{on:true,room:0.35,decay:0.3,mix:0.2}, tremolo:{on:true,rate:4,depth:0.45}, eq:{on:true,bass:0,mid:0,treble:4} },
-  reggae:  { compressor:{on:true,threshold:-20,ratio:4}, overdrive:{on:false}, distortion:{on:false}, chorus:{on:true,rate:0.5,depth:0.3,mix:0.25}, phaser:{on:false}, delay:{on:true,time:0.65,feedback:0.5,mix:0.55}, reverb:{on:true,room:0.5,decay:0.5,mix:0.3}, tremolo:{on:false}, eq:{on:true,bass:6,mid:-2,treble:-2} },
+  clean:   { _amp:{model:'fender',  channel:'clean',  knobs:{gain:3,volume:7,presence:4,bass:5,mid:5,treble:6}},  compressor:{on:false}, overdrive:{on:false}, distortion:{on:false}, chorus:{on:false}, phaser:{on:false}, delay:{on:false}, reverb:{on:true,room:0.3,decay:0.3,mix:0.15}, tremolo:{on:false}, eq:{on:false}, noisegate:{on:false} },
+  rock:    { _amp:{model:'marshall',channel:'crunch', knobs:{gain:7,volume:7,presence:7,bass:6,mid:7,treble:7}},  compressor:{on:true,threshold:-24,ratio:4}, overdrive:{on:false}, distortion:{on:true,drive:0.55,tone:3500,level:0.75}, chorus:{on:false}, phaser:{on:false}, delay:{on:true,time:0.25,feedback:0.3,mix:0.4}, reverb:{on:true,room:0.4,decay:0.4,mix:0.25}, tremolo:{on:false}, eq:{on:true,bass:3,mid:2,treble:1}, noisegate:{on:false} },
+  metal:   { _amp:{model:'mesa',    channel:'lead',   knobs:{gain:9,volume:7,presence:8,bass:7,mid:2,treble:8}},  compressor:{on:true,threshold:-30,ratio:8}, overdrive:{on:false}, distortion:{on:true,drive:0.9,tone:2500,level:0.8}, chorus:{on:false}, phaser:{on:false}, delay:{on:true,time:0.15,feedback:0.15,mix:0.2}, reverb:{on:false}, tremolo:{on:false}, eq:{on:true,bass:5,mid:-4,treble:3}, noisegate:{on:true,threshold:-50,release:0.08} },
+  blues:   { _amp:{model:'tweed',   channel:'crunch', knobs:{gain:5,volume:6,presence:4,bass:6,mid:6,treble:5}},  compressor:{on:true,threshold:-20,ratio:3}, overdrive:{on:true,drive:0.4,tone:4000,level:0.8}, distortion:{on:false}, chorus:{on:false}, phaser:{on:false}, delay:{on:true,time:0.4,feedback:0.4,mix:0.45}, reverb:{on:true,room:0.65,decay:0.55,mix:0.35}, tremolo:{on:false}, eq:{on:true,bass:4,mid:3,treble:-1}, noisegate:{on:false} },
+  jazz:    { _amp:{model:'fender',  channel:'clean',  knobs:{gain:2,volume:6,presence:3,bass:6,mid:4,treble:3}},  compressor:{on:true,threshold:-18,ratio:3}, overdrive:{on:false}, distortion:{on:false}, chorus:{on:true,rate:0.8,depth:0.35,mix:0.3}, phaser:{on:false}, delay:{on:false}, reverb:{on:true,room:0.3,decay:0.3,mix:0.2}, tremolo:{on:false}, eq:{on:true,bass:3,mid:0,treble:-4}, noisegate:{on:false} },
+  funk:    { _amp:{model:'fender',  channel:'clean',  knobs:{gain:4,volume:7,presence:5,bass:4,mid:3,treble:8}},  compressor:{on:true,threshold:-26,ratio:6}, overdrive:{on:false}, distortion:{on:false}, chorus:{on:false}, phaser:{on:true,rate:2,depth:0.6,mix:0.5}, delay:{on:false}, reverb:{on:false}, tremolo:{on:false}, eq:{on:true,bass:2,mid:-3,treble:3}, noisegate:{on:false} },
+  pop:     { _amp:{model:'vox',     channel:'clean',  knobs:{gain:4,volume:7,presence:6,bass:5,mid:5,treble:7}},  compressor:{on:true,threshold:-20,ratio:4}, overdrive:{on:false}, distortion:{on:false}, chorus:{on:true,rate:1.5,depth:0.5,mix:0.4}, phaser:{on:false}, delay:{on:true,time:0.3,feedback:0.25,mix:0.3}, reverb:{on:true,room:0.5,decay:0.45,mix:0.3}, tremolo:{on:false}, eq:{on:true,bass:1,mid:0,treble:2}, noisegate:{on:false} },
+  country: { _amp:{model:'fender',  channel:'crunch', knobs:{gain:5,volume:7,presence:6,bass:4,mid:5,treble:7}},  compressor:{on:true,threshold:-22,ratio:3}, overdrive:{on:true,drive:0.2,tone:5500,level:0.75}, distortion:{on:false}, chorus:{on:false}, phaser:{on:false}, delay:{on:true,time:0.18,feedback:0.12,mix:0.3}, reverb:{on:true,room:0.35,decay:0.3,mix:0.2}, tremolo:{on:true,rate:4,depth:0.45}, eq:{on:true,bass:0,mid:0,treble:4}, noisegate:{on:false} },
+  reggae:  { _amp:{model:'fender',  channel:'clean',  knobs:{gain:3,volume:6,presence:3,bass:8,mid:3,treble:2}},  compressor:{on:true,threshold:-20,ratio:4}, overdrive:{on:false}, distortion:{on:false}, chorus:{on:true,rate:0.5,depth:0.3,mix:0.25}, phaser:{on:false}, delay:{on:true,time:0.65,feedback:0.5,mix:0.55}, reverb:{on:true,room:0.5,decay:0.5,mix:0.3}, tremolo:{on:false}, eq:{on:true,bass:6,mid:-2,treble:-2}, noisegate:{on:false} },
 };
 
 const SLIDER_MAP = {
@@ -50,6 +54,7 @@ const SLIDER_MAP = {
   reverb:     {'reverb-room':'room','reverb-decay':'decay','reverb-mix':'mix'},
   tremolo:    {'tremolo-rate':'rate','tremolo-depth':'depth'},
   eq:         {'eq-bass':'bass','eq-mid':'mid','eq-treble':'treble'},
+  noisegate:  {'ng-threshold':'threshold','ng-release':'release'},
 };
 
 // ─── Oscilloscope ─────────────────────────────────────────────────────────────
@@ -197,6 +202,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 async function toggleConnect() {
   const btn = document.getElementById('connect-btn');
   if (ctx) {
+    if (ngInterval) { clearInterval(ngInterval); ngInterval = null; }
     stream?.getTracks().forEach(t => t.stop());
     await ctx.close();
     ctx = source = stream = null;
@@ -206,8 +212,16 @@ async function toggleConnect() {
   }
   try {
     const inputId  = document.getElementById('input-device').value;
-    const outputId = document.getElementById('output-device').value;
-    ctx = new AudioContext({ sampleRate: 44100, latencyHint: 'interactive' });
+    let   outputId = document.getElementById('output-device').value;
+
+    // Prevent feedback loop: never route output back to the same USB device as input
+    if (inputId && outputId && inputId === outputId) {
+      outputId = '';  // fall back to system default (built-in)
+      document.getElementById('output-device').value = '';
+      setStatus('⚠ Sortie remise sur défaut (même périphérique que l\'entrée évite la boucle)');
+    }
+
+    ctx = new AudioContext({ latencyHint: 'interactive' });
     if (ctx.setSinkId && outputId) await ctx.setSinkId(outputId).catch(() => {});
     stream = await navigator.mediaDevices.getUserMedia({
       audio: { deviceId: inputId ? { exact: inputId } : undefined,
@@ -234,8 +248,42 @@ function bqf(type, freq, Q, gainVal) {
   if (Q !== null) f.Q.value = Q; f.gain.value = gainVal; return f;
 }
 
+function applyInputTrim() {
+  const db  = +el('input-trim').value;
+  const lin = Math.pow(10, db / 20);
+  setText('input-trim-val', (db >= 0 ? '+' : '') + db + ' dB');
+  if (n.in) n.in.gain.value = lin;
+}
+
 function buildChain() {
-  n.in = g();
+  const trimDb = +el('input-trim').value;
+  setText('input-trim-val', (trimDb >= 0 ? '+' : '') + trimDb + ' dB');
+  n.in = g(Math.pow(10, trimDb / 20));
+
+  // ── PRE-FILTER: kill USB hum before anything else ────────────────────────
+  n.hpf    = bqf('highpass',  80,   0.7, 0);   // cut sub-bass rumble
+  n.notch1 = bqf('notch',     50,   30,  0);   // 50 Hz mains hum (EU)
+  n.notch2 = bqf('notch',     60,   30,  0);   // 60 Hz mains hum (US)
+  n.notch3 = bqf('notch',     100,  20,  0);   // 2nd harmonic 50 Hz
+  n.notch4 = bqf('notch',     120,  20,  0);   // 2nd harmonic 60 Hz
+  n.in.connect(n.hpf);
+  n.hpf.connect(n.notch1); n.notch1.connect(n.notch2);
+  n.notch2.connect(n.notch3); n.notch3.connect(n.notch4);
+
+  // ── INPUT LIMITER: prevent hot USB signal from clipping gain stages ───────
+  n.limiter = ctx.createDynamicsCompressor();
+  n.limiter.threshold.value = -18;  // clamp anything above -18 dBFS
+  n.limiter.ratio.value     = 20;   // near-hard limiting
+  n.limiter.attack.value    = 0.001;
+  n.limiter.release.value   = 0.05;
+  n.limiter.knee.value      = 2;
+  n.notch4.connect(n.limiter);
+
+  // ── NOISE GATE (before amp so gain doesn't amplify the noise) ────────────
+  n.ngAnalyser = ctx.createAnalyser(); n.ngAnalyser.fftSize = 256;
+  n.ngGate = g(1);
+  n.limiter.connect(n.ngAnalyser); n.ngAnalyser.connect(n.ngGate);
+  startNoiseGateLoop();
 
   // ── AMP SECTION ──────────────────────────────────────────────────────────
   n.ampPreGain  = g(0.6);
@@ -243,7 +291,7 @@ function buildChain() {
   n.ampMid      = bqf('peaking',    500,  1,    0);
   n.ampTreble   = bqf('highshelf', 3000,  null, 0);
   n.ampPresence = bqf('highshelf', 6500,  null, 0);
-  n.in.connect(n.ampPreGain);
+  n.ngGate.connect(n.ampPreGain);
   n.ampPreGain.connect(n.ampBass); n.ampBass.connect(n.ampMid);
   n.ampMid.connect(n.ampTreble);  n.ampTreble.connect(n.ampPresence);
   let prev = n.ampPresence;
@@ -345,6 +393,15 @@ function buildChain() {
 // ─── Amp section ─────────────────────────────────────────────────────────────
 function applyAmpSettings() {
   if (!ctx) return;
+  if (directMode) {
+    if (n.ampPreGain)  n.ampPreGain.gain.value  = 1;
+    if (n.ampMaster)   n.ampMaster.gain.value   = 1;
+    if (n.ampBass)     n.ampBass.gain.value     = 0;
+    if (n.ampMid)      n.ampMid.gain.value      = 0;
+    if (n.ampTreble)   n.ampTreble.gain.value   = 0;
+    if (n.ampPresence) n.ampPresence.gain.value = 0;
+    return;
+  }
   const chMult = CHANNEL_GAIN[currentChannel] ?? 0.3;
   if (n.ampPreGain)  n.ampPreGain.gain.value  = (ampState.gain / 10) * chMult * 2 + 0.01;
   if (n.ampMaster)   n.ampMaster.gain.value   = ampState.volume / 10;
@@ -352,6 +409,25 @@ function applyAmpSettings() {
   if (n.ampMid)      n.ampMid.gain.value      = (ampState.mid - 5) * 2;
   if (n.ampTreble)   n.ampTreble.gain.value   = (ampState.treble - 5) * 2;
   if (n.ampPresence) n.ampPresence.gain.value = (ampState.presence - 5) * 1.5;
+}
+
+function toggleDirectMode() {
+  directMode = !directMode;
+  const btn = el('btn-direct');
+  btn.classList.toggle('active', directMode);
+  document.querySelector('.amp-head').classList.toggle('direct-mode', directMode);
+  document.body.classList.toggle('direct-mode', directMode);
+
+  if (directMode) {
+    // turn off amp-like pedals — Spider V30 handles the tone
+    ['compressor', 'overdrive', 'distortion'].forEach(name => {
+      if (state[name]) toggleEffect(name);
+    });
+    setStatus('Mode Direct — effets seuls actifs');
+  } else {
+    setStatus('Mode Ampli');
+  }
+  applyAmpSettings();
 }
 
 function setAmpModel(model) {
@@ -436,6 +512,10 @@ function syncEffect(name) {
       n.eqBass.gain.value = on ? +el('eq-bass').value : 0;
       n.eqMid.gain.value  = on ? +el('eq-mid').value  : 0;
       n.eqHigh.gain.value = on ? +el('eq-treble').value : 0; break;
+    case 'noisegate':
+      // gate is driven by the polling loop; just open it immediately when disabled
+      if (!on && n.ngGate) n.ngGate.gain.setTargetAtTime(1, ctx.currentTime, 0.005);
+      break;
   }
 }
 
@@ -453,7 +533,28 @@ function applyGenre(key) {
   const preset = GENRES[key]; if (!preset) return;
   document.querySelectorAll('.genre-btn').forEach(b => b.classList.remove('active'));
   el('genre-' + key).classList.add('active');
+
+  // apply amp model, channel, and knobs
+  if (preset._amp) {
+    setAmpModel(preset._amp.model);
+    setChannel(preset._amp.channel);
+    if (preset._amp.knobs) {
+      document.querySelectorAll('.amp-knob-wrap').forEach(wrap => {
+        const param = wrap.dataset.param;
+        if (!(param in preset._amp.knobs)) return;
+        const v = preset._amp.knobs[param];
+        const min = +wrap.dataset.min, max = +wrap.dataset.max;
+        const pct = (v - min) / (max - min);
+        document.getElementById('dial-' + param).style.transform = `rotate(${-135 + pct * 270}deg)`;
+        wrap.querySelector('.knob-ring').style.setProperty('--fill', (pct * 270) + 'deg');
+        document.getElementById('kv-' + param).textContent = v.toFixed(1);
+        ampState[param] = v;
+      });
+    }
+  }
+
   for (const [name, settings] of Object.entries(preset)) {
+    if (name === '_amp') continue;
     state[name] = settings.on;
     el(name + '-toggle').textContent = settings.on ? 'ON' : 'OFF';
     el(name + '-toggle').classList.toggle('on', settings.on);
@@ -526,9 +627,61 @@ function updateEQ() {
   const f = v => (v>=0?'+':'')+Math.round(v)+' dB';
   setText('eq-bass-val', f(bass)); setText('eq-mid-val', f(mid)); setText('eq-treble-val', f(treble));
 }
+function updateNoisegate() {
+  const thr = +el('ng-threshold').value;
+  const rel = +el('ng-release').value;
+  setText('ng-threshold-val', thr + ' dB');
+  setText('ng-release-val', Math.round(rel * 1000) + ' ms');
+}
+
+function startNoiseGateLoop() {
+  if (ngInterval) clearInterval(ngInterval);
+  const buf = new Float32Array(256);
+  let gateOpen = true;
+
+  ngInterval = setInterval(() => {
+    if (!ctx || !n.ngAnalyser || !n.ngGate) return;
+
+    if (!state.noisegate) {
+      if (!gateOpen) {
+        gateOpen = true;
+        n.ngGate.gain.cancelScheduledValues(ctx.currentTime);
+        n.ngGate.gain.setTargetAtTime(1, ctx.currentTime, 0.005);
+      }
+      return;
+    }
+
+    n.ngAnalyser.getFloatTimeDomainData(buf);
+    const rms = Math.sqrt(buf.reduce((s, v) => s + v * v, 0) / buf.length);
+    const thresholdLinear = Math.pow(10, +el('ng-threshold').value / 20);
+    const release = +el('ng-release').value;
+    const shouldOpen = rms > thresholdLinear;
+
+    // live level display
+    const dbVal = rms > 0 ? Math.round(20 * Math.log10(rms)) : -99;
+    setText('ng-level-val', (dbVal > -99 ? dbVal : '−∞') + ' dB');
+    const statusEl = el('ng-gate-status');
+    if (statusEl) {
+      statusEl.textContent = shouldOpen ? 'OPEN' : 'CLOSED';
+      statusEl.className   = shouldOpen ? 'ng-gate-open' : 'ng-gate-closed';
+    }
+
+    if (shouldOpen !== gateOpen) {
+      gateOpen = shouldOpen;
+      n.ngGate.gain.cancelScheduledValues(ctx.currentTime);
+      n.ngGate.gain.setTargetAtTime(
+        shouldOpen ? 1 : 0,
+        ctx.currentTime,
+        shouldOpen ? 0.001 : release
+      );
+    }
+  }, 10);
+}
+
 function updateAll() {
   updateCompressor(); updateOverdrive(); updateDistortion(); updateChorus();
   updatePhaser(); updateDelay(); updateReverb(); updateTremolo(); updateEQ();
+  updateNoisegate();
 }
 
 const el      = id => document.getElementById(id);
@@ -568,6 +721,8 @@ function _captureState() {
   }
   return {
     id: Date.now().toString(),
+    inputDeviceId:  el('input-device').value  || null,
+    outputDeviceId: el('output-device').value || null,
     ampModel: currentModel,
     channel: currentChannel,
     amp: { ...ampState },
@@ -596,7 +751,33 @@ function savePreset() {
   setTimeout(() => { btn.textContent = 'SAVE'; btn.classList.remove('preset-flash-ok'); }, 900);
 }
 
-function _applyPresetData(p) {
+async function _applyPresetData(p) {
+  // restore I/O device selectors if the saved device is still available
+  let deviceChanged = false;
+  if (p.inputDeviceId) {
+    const inSel = el('input-device');
+    if ([...inSel.options].some(o => o.value === p.inputDeviceId)) {
+      if (inSel.value !== p.inputDeviceId) { inSel.value = p.inputDeviceId; deviceChanged = true; }
+    }
+  }
+  if (p.outputDeviceId) {
+    const outSel = el('output-device');
+    if ([...outSel.options].some(o => o.value === p.outputDeviceId)) {
+      if (outSel.value !== p.outputDeviceId) { outSel.value = p.outputDeviceId; deviceChanged = true; }
+    }
+  }
+
+  // if already connected and device changed, reconnect with new device
+  if (ctx && deviceChanged) {
+    stream?.getTracks().forEach(t => t.stop());
+    await ctx.close();
+    ctx = source = stream = null;
+    document.getElementById('power-led').classList.remove('on');
+    const btn = document.getElementById('connect-btn');
+    btn.textContent = 'CONNECT'; btn.classList.remove('active');
+    await toggleConnect();
+  }
+
   if (p.ampModel) setAmpModel(p.ampModel);
   if (p.channel)  setChannel(p.channel);
   if (p.amp) {
@@ -613,7 +794,21 @@ function _applyPresetData(p) {
     });
     applyAmpSettings();
   }
-  for (const [name, settings] of Object.entries(p.effects || {})) {
+  const EFFECT_DEFAULTS = {
+    compressor: { on: false, threshold: -24, ratio: 4 },
+    overdrive:  { on: false, drive: 0.5, tone: 5000, level: 0.8 },
+    distortion: { on: false, drive: 0.5, tone: 3000, level: 0.7 },
+    chorus:     { on: false, rate: 3.3, depth: 0.5, mix: 0.5 },
+    phaser:     { on: false, rate: 0.5, depth: 0.5, mix: 0.5 },
+    delay:      { on: false, time: 0.3, feedback: 0.4, mix: 0.5 },
+    reverb:     { on: false, room: 0.5, decay: 0.5, mix: 0.3 },
+    tremolo:    { on: false, rate: 5, depth: 0.5 },
+    eq:         { on: false, bass: 0, mid: 0, treble: 0 },
+    noisegate:  { on: false, threshold: -50, release: 0.1 },
+  };
+  const effects = p.effects || {};
+  for (const [name, defaults] of Object.entries(EFFECT_DEFAULTS)) {
+    const settings = { ...defaults, ...effects[name] };
     state[name] = settings.on;
     el(name + '-toggle').textContent = settings.on ? 'ON' : 'OFF';
     el(name + '-toggle').classList.toggle('on', settings.on);
@@ -626,12 +821,12 @@ function _applyPresetData(p) {
   if (ctx) Object.keys(state).forEach(syncEffect);
 }
 
-function loadPreset() {
+async function loadPreset() {
   const id = el('preset-select').value;
   if (!id) return;
   const p = _readPresets().find(x => x.id === id);
   if (!p) return;
-  _applyPresetData(p);
+  await _applyPresetData(p);
   const btn = el('preset-load-btn');
   btn.textContent = 'LOADED'; btn.classList.add('preset-flash-ok');
   setTimeout(() => { btn.textContent = 'LOAD'; btn.classList.remove('preset-flash-ok'); }, 900);
@@ -691,7 +886,7 @@ function _presetSummary(p) {
       .filter(([, v]) => v && v.on)
       .map(([k]) => ({ compressor:'COMP', overdrive:'OD', distortion:'DIST',
                        chorus:'CHORUS', phaser:'PHASER', delay:'DELAY',
-                       reverb:'REVERB', tremolo:'TREM', eq:'EQ' }[k] || k.toUpperCase()))
+                       reverb:'REVERB', tremolo:'TREM', eq:'EQ', noisegate:'GATE' }[k] || k.toUpperCase()))
       .join('  ');
     if (active) parts.push(active);
   }
@@ -740,8 +935,8 @@ function _addMsg(role, text, preset, isError) {
       const btn = document.createElement('button');
       btn.className = 'ai-apply-btn';
       btn.innerHTML = '⚡ Appliquer automatiquement';
-      btn.onclick = () => {
-        _applyPresetData(preset);
+      btn.onclick = async () => {
+        await _applyPresetData(preset);
         btn.innerHTML = '✓ Appliqué !';
         btn.classList.add('applied');
         setTimeout(() => { btn.innerHTML = '⚡ Appliquer automatiquement'; btn.classList.remove('applied'); }, 2500);

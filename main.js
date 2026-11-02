@@ -26,7 +26,7 @@ function createWindow() {
     width: 1400,
     height: 820,
     resizable: false,
-    backgroundColor: '#0d0f14',
+    backgroundColor: '#181210',
     title: 'Guitar Pedalboard',
     webPreferences: {
       nodeIntegration: true,
