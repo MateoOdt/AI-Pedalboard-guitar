@@ -29,19 +29,25 @@
   --pdl-reverb: #080820;
   --pdl-trem:   #0a1a08;
   --pdl-eq:     #161618;
-  --pdl-ng:     #100e14;
+  --pdl-ng:       #100e14;
+  --pdl-flanger:  #0a1a18;
+  --pdl-fuzz:     #1c1408;
+  --pdl-autowah:  #180a22;
 
   /* per-pedal accent colors */
-  --acc-comp:   #d4820a;
-  --acc-od:     #7ab020;
-  --acc-dist:   #d03030;
-  --acc-chorus: #2880d0;
-  --acc-phaser: #d06820;
-  --acc-delay:  #c08820;
-  --acc-reverb: #6068d0;
-  --acc-trem:   #40a840;
-  --acc-eq:     #8890a0;
-  --acc-ng:     #e05020;
+  --acc-comp:    #d4820a;
+  --acc-od:      #7ab020;
+  --acc-dist:    #d03030;
+  --acc-chorus:  #2880d0;
+  --acc-phaser:  #d06820;
+  --acc-delay:   #c08820;
+  --acc-reverb:  #6068d0;
+  --acc-trem:    #40a840;
+  --acc-eq:      #8890a0;
+  --acc-ng:      #e05020;
+  --acc-flanger: #20c0a0;
+  --acc-fuzz:    #e06010;
+  --acc-autowah: #9030d0;
 }
 
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -271,7 +277,12 @@ header {
    ║  PEDALBOARD FLOOR                                             ║
    ╚══════════════════════════════════════════════════════════════╝ */
 .board {
-  flex: 1; display: flex; gap: 8px; padding: 12px 14px;
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(20, 1fr);
+  grid-template-rows: 1fr 1fr 0.8fr;
+  gap: 10px;
+  padding: 14px;
   background-color: #0e0c0a;
   background-image:
     repeating-linear-gradient(45deg, rgba(255,255,255,0.013) 0px, rgba(255,255,255,0.013) 1px, transparent 1px, transparent 5px),
@@ -284,7 +295,6 @@ header {
    ║  PEDAL — realistic stomp box                                  ║
    ╚══════════════════════════════════════════════════════════════╝ */
 .pedal {
-  flex: 1;
   display: flex;
   flex-direction: column;
   border-radius: 5px;
@@ -376,6 +386,24 @@ header {
   radial-gradient(circle at 8px calc(100% - 8px), rgba(255,255,255,0.07) 3px, rgba(0,0,0,0.35) 3px, rgba(0,0,0,0.35) 4.5px, transparent 4.5px),
   radial-gradient(circle at calc(100% - 8px) calc(100% - 8px), rgba(255,255,255,0.07) 3px, rgba(0,0,0,0.35) 3px, rgba(0,0,0,0.35) 4.5px, transparent 4.5px),
   linear-gradient(155deg, #1c1824 0%, var(--pdl-ng) 40%, #080610 100%); }
+#pedal-flanger { background-image:
+  radial-gradient(circle at 8px 8px, rgba(255,255,255,0.07) 3px, rgba(0,0,0,0.35) 3px, rgba(0,0,0,0.35) 4.5px, transparent 4.5px),
+  radial-gradient(circle at calc(100% - 8px) 8px, rgba(255,255,255,0.07) 3px, rgba(0,0,0,0.35) 3px, rgba(0,0,0,0.35) 4.5px, transparent 4.5px),
+  radial-gradient(circle at 8px calc(100% - 8px), rgba(255,255,255,0.07) 3px, rgba(0,0,0,0.35) 3px, rgba(0,0,0,0.35) 4.5px, transparent 4.5px),
+  radial-gradient(circle at calc(100% - 8px) calc(100% - 8px), rgba(255,255,255,0.07) 3px, rgba(0,0,0,0.35) 3px, rgba(0,0,0,0.35) 4.5px, transparent 4.5px),
+  linear-gradient(155deg, #122820 0%, var(--pdl-flanger) 40%, #041210 100%); }
+#pedal-fuzz { background-image:
+  radial-gradient(circle at 8px 8px, rgba(255,255,255,0.07) 3px, rgba(0,0,0,0.35) 3px, rgba(0,0,0,0.35) 4.5px, transparent 4.5px),
+  radial-gradient(circle at calc(100% - 8px) 8px, rgba(255,255,255,0.07) 3px, rgba(0,0,0,0.35) 3px, rgba(0,0,0,0.35) 4.5px, transparent 4.5px),
+  radial-gradient(circle at 8px calc(100% - 8px), rgba(255,255,255,0.07) 3px, rgba(0,0,0,0.35) 3px, rgba(0,0,0,0.35) 4.5px, transparent 4.5px),
+  radial-gradient(circle at calc(100% - 8px) calc(100% - 8px), rgba(255,255,255,0.07) 3px, rgba(0,0,0,0.35) 3px, rgba(0,0,0,0.35) 4.5px, transparent 4.5px),
+  linear-gradient(145deg, #281c08 0%, var(--pdl-fuzz) 45%, #0e0a04 100%); }
+#pedal-autowah { background-image:
+  radial-gradient(circle at 8px 8px, rgba(255,255,255,0.07) 3px, rgba(0,0,0,0.35) 3px, rgba(0,0,0,0.35) 4.5px, transparent 4.5px),
+  radial-gradient(circle at calc(100% - 8px) 8px, rgba(255,255,255,0.07) 3px, rgba(0,0,0,0.35) 3px, rgba(0,0,0,0.35) 4.5px, transparent 4.5px),
+  radial-gradient(circle at 8px calc(100% - 8px), rgba(255,255,255,0.07) 3px, rgba(0,0,0,0.35) 3px, rgba(0,0,0,0.35) 4.5px, transparent 4.5px),
+  radial-gradient(circle at calc(100% - 8px) calc(100% - 8px), rgba(255,255,255,0.07) 3px, rgba(0,0,0,0.35) 3px, rgba(0,0,0,0.35) 4.5px, transparent 4.5px),
+  linear-gradient(160deg, #281030 0%, var(--pdl-autowah) 45%, #0c0418 100%); }
 
 /* amber top stripe — glows on active */
 .pedal::after {
@@ -403,6 +431,16 @@ header {
 #pedal-tremolo.active    { box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), inset 1px 0 0 rgba(255,255,255,0.04), inset -1px 0 0 rgba(0,0,0,0.4), inset 0 -2px 0 rgba(0,0,0,0.6), 0 7px 18px rgba(0,0,0,0.85), 0 0 22px rgba(64,168,64,0.18); }
 #pedal-eq.active         { box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), inset 1px 0 0 rgba(255,255,255,0.04), inset -1px 0 0 rgba(0,0,0,0.4), inset 0 -2px 0 rgba(0,0,0,0.6), 0 7px 18px rgba(0,0,0,0.85), 0 0 22px rgba(136,144,160,0.16); }
 #pedal-noisegate.active  { box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), inset 1px 0 0 rgba(255,255,255,0.04), inset -1px 0 0 rgba(0,0,0,0.4), inset 0 -2px 0 rgba(0,0,0,0.6), 0 7px 18px rgba(0,0,0,0.85), 0 0 22px rgba(224,80,32,0.18); }
+#pedal-flanger.active    { box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), inset 1px 0 0 rgba(255,255,255,0.04), inset -1px 0 0 rgba(0,0,0,0.4), inset 0 -2px 0 rgba(0,0,0,0.6), 0 7px 18px rgba(0,0,0,0.85), 0 0 22px rgba(32,192,160,0.2); }
+#pedal-fuzz.active       { box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), inset 1px 0 0 rgba(255,255,255,0.04), inset -1px 0 0 rgba(0,0,0,0.4), inset 0 -2px 0 rgba(0,0,0,0.6), 0 7px 18px rgba(0,0,0,0.85), 0 0 22px rgba(224,96,16,0.22); }
+#pedal-autowah.active    { box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), inset 1px 0 0 rgba(255,255,255,0.04), inset -1px 0 0 rgba(0,0,0,0.4), inset 0 -2px 0 rgba(0,0,0,0.6), 0 7px 18px rgba(0,0,0,0.85), 0 0 22px rgba(144,48,208,0.2); }
+
+/* ── Per-pedal grid placement — handled via inline styles by applyGridPositions() ── */
+
+/* ── Drag & drop feedback ────────────────────────────────────────── */
+.pedal[draggable] { cursor: grab; }
+.pedal.dragging   { opacity: 0.35; outline: 2px dashed var(--border-2); }
+.pedal.drag-over  { outline: 2px solid var(--amber); box-shadow: 0 0 18px rgba(196,126,10,0.45); }
 
 /* ── Pedal top name plate ────────────────────────────────────────── */
 .pedal-top {
@@ -468,7 +506,10 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
 #pedal-reverb     input[type="range"] { accent-color: var(--acc-reverb); }
 #pedal-tremolo    input[type="range"] { accent-color: var(--acc-trem);   }
 #pedal-eq         input[type="range"] { accent-color: var(--acc-eq);     }
-#pedal-noisegate  input[type="range"] { accent-color: var(--acc-ng);     }
+#pedal-noisegate  input[type="range"] { accent-color: var(--acc-ng);      }
+#pedal-flanger    input[type="range"] { accent-color: var(--acc-flanger); }
+#pedal-fuzz       input[type="range"] { accent-color: var(--acc-fuzz);    }
+#pedal-autowah    input[type="range"] { accent-color: var(--acc-autowah); }
 
 /* ── Noise gate extras ──────────────────────────────────────────── */
 .ng-level-row { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
