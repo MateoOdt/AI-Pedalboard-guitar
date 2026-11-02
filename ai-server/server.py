@@ -1,7 +1,5 @@
 import json
 import os
-import re
-import difflib
 import urllib.request
 import uvicorn
 from contextlib import asynccontextmanager
@@ -9,14 +7,30 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
 from pydantic import BaseModel
-from langchain_ollama import ChatOllama
+from langchain_ollama import ChatOllama, OllamaEmbeddings
 from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_core.vectorstores import InMemoryVectorStore
+from langchain_core.documents import Document
 
 # ── Dataset ───────────────────────────────────────────────────────────────────
 
 DATASET: list[dict] = []
 DATASET_URL   = "https://raw.githubusercontent.com/Pera-Labs/guitar-tone-dataset/master/guitar-tones.json"
 DATASET_CACHE = os.path.join(os.path.dirname(__file__), "guitar-tones-cache.json")
+
+# ── RAG (semantic retrieval) ───────────────────────────────────────────────────
+#
+# Tones are retrieved by *meaning*, not keywords: each dataset entry is embedded
+# once into a vector store, and a request finds the nearest tone by cosine
+# similarity. This lets descriptive prompts ("warm bluesy solo") match relevant
+# tones even when no song/artist is named — the keyword matcher could not.
+
+VECTORSTORE: Optional[InMemoryVectorStore] = None
+EMBED_MODEL   = os.environ.get("TONE_EMBED_MODEL", "nomic-embed-text")
+VECTOR_CACHE  = os.path.join(os.path.dirname(__file__), "tone-vectors-cache.json")
+# Minimum cosine similarity for a hit to count as a real dataset reference.
+# Below this we fall back to pure-AI generation. Tune if matches feel loose/tight.
+SIM_THRESHOLD = float(os.environ.get("TONE_SIM_THRESHOLD", "0.6"))
 
 
 def _load_dataset():
@@ -40,31 +54,71 @@ def _load_dataset():
         print(f"[Dataset] Failed to load ({e}) — falling back to pure AI generation")
 
 
-def _score_entry(entry: dict, prompt: str) -> float:
-    p = prompt.lower()
-    song   = (entry.get("song")   or "").lower()
-    artist = (entry.get("artist") or "").lower()
-    score  = 0.0
-    # Substring match (highest priority)
-    if song   and song   in p: score = max(score, 0.95)
-    if artist and artist in p: score = max(score, 0.75)
-    # Fuzzy match
-    if song:
-        score = max(score, difflib.SequenceMatcher(None, p, song).ratio())
-    if artist:
-        score = max(score, difflib.SequenceMatcher(None, p, artist).ratio() * 0.85)
-    return score
+def _entry_text(e: dict) -> str:
+    """Human-readable summary of a tone, used as the embedding document."""
+    gear = e.get("original_gear") or {}
+    parts = [
+        e.get("song"), e.get("artist"), e.get("genre"), e.get("era"),
+        e.get("tone_type"), e.get("part"), gear.get("amp"), gear.get("notes"),
+    ]
+    return " | ".join(str(p) for p in parts if p)
 
 
-def search_dataset(prompt: str, threshold: float = 0.65) -> Optional[dict]:
+def _build_vectorstore():
+    """Embed every tone into an in-memory vector store, persisted to disk so the
+    one-off embedding cost isn't paid on every app launch."""
+    global VECTORSTORE
     if not DATASET:
+        return
+    try:
+        emb = OllamaEmbeddings(model=EMBED_MODEL)
+        # Reuse cached vectors when they match the current dataset size.
+        if os.path.exists(VECTOR_CACHE):
+            vs = InMemoryVectorStore.load(VECTOR_CACHE, emb)
+            if len(vs.store) == len(DATASET):
+                VECTORSTORE = vs
+                print(f"[RAG] Loaded {len(vs.store)} tone vectors from cache")
+                return
+            print("[RAG] Cache size differs from dataset — rebuilding")
+        # metadata holds only the index; the full entry stays in DATASET.
+        docs = [Document(page_content=_entry_text(e), metadata={"idx": i})
+                for i, e in enumerate(DATASET)]
+        vs = InMemoryVectorStore(emb)
+        print(f"[RAG] Embedding {len(docs)} tones with '{EMBED_MODEL}' (one-off)…")
+        vs.add_documents(docs)
+        vs.dump(VECTOR_CACHE)
+        VECTORSTORE = vs
+        print(f"[RAG] Built and cached {len(docs)} tone vectors")
+    except Exception as e:
+        VECTORSTORE = None
+        print(f"[RAG] Vector store unavailable ({e}) — falling back to AI-only")
+
+
+def retrieve_tones(prompt: str, k: int = 3) -> list[tuple[dict, float]]:
+    """Return the top-k nearest tone entries with their similarity scores."""
+    if VECTORSTORE is None:
+        return []
+    try:
+        hits = VECTORSTORE.similarity_search_with_score(prompt, k=k)
+    except Exception as e:
+        print(f"[RAG] query failed ({e})")
+        return []
+    out = []
+    for doc, score in hits:
+        idx = doc.metadata.get("idx")
+        if isinstance(idx, int) and idx < len(DATASET):
+            out.append((DATASET[idx], score))
+    return out
+
+
+def search_dataset(prompt: str, threshold: float = SIM_THRESHOLD) -> Optional[dict]:
+    """Return the nearest tone entry by semantic similarity, or None if the best
+    match is weaker than `threshold`."""
+    hits = retrieve_tones(prompt, k=1)
+    if not hits:
         return None
-    best_score, best_entry = 0.0, None
-    for entry in DATASET:
-        s = _score_entry(entry, prompt)
-        if s > best_score:
-            best_score, best_entry = s, entry
-    return best_entry if best_score >= threshold else None
+    entry, score = hits[0]
+    return entry if score >= threshold else None
 
 
 # ── App lifespan ──────────────────────────────────────────────────────────────
@@ -72,6 +126,7 @@ def search_dataset(prompt: str, threshold: float = 0.65) -> Optional[dict]:
 @asynccontextmanager
 async def lifespan(_):
     _load_dataset()
+    _build_vectorstore()
     yield
 
 app = FastAPI(lifespan=lifespan)
@@ -169,7 +224,20 @@ class SuggestRequest(BaseModel):
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "dataset_entries": len(DATASET)}
+    return {
+        "status": "ok",
+        "dataset_entries": len(DATASET),
+        "rag": VECTORSTORE is not None,
+        "embed_model": EMBED_MODEL,
+    }
+
+
+def _is_embedding_model(name: str) -> bool:
+    """Embedding models (e.g. nomic-embed-text) can't do chat, so they must not
+    appear in the chat-model picker — selecting one yields a 'does not support
+    chat' error from Ollama."""
+    n = name.lower()
+    return "embed" in n or n.startswith(EMBED_MODEL.lower())
 
 
 @app.get("/models")
@@ -180,6 +248,7 @@ async def list_models():
         models = [
             {"name": m.model, "size_gb": round(m.size / 1_073_741_824, 1) if m.size else 0}
             for m in result.models
+            if not _is_embedding_model(m.model)
         ]
         return {"models": models}
     except Exception as e:
@@ -204,6 +273,20 @@ async def suggest(req: SuggestRequest):
         messages = [SystemMessage(content=system), HumanMessage(content=human)]
         result = await llm.ainvoke(messages)
         return extract_json(result.content)
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+
+@app.post("/suggest/agent")
+async def suggest_agent(req: SuggestRequest):
+    """Agentic RAG: a LangGraph agent decides how/when to search the tone dataset
+    (reformulating and re-querying as needed) before composing the preset."""
+    try:
+        from agent import run_agent
+        return await run_agent(
+            req.prompt, req.model, retrieve_tones,
+            SYSTEM_DATASET, SYSTEM_AI, extract_json,
+        )
     except Exception as e:
         raise HTTPException(status_code=422, detail=str(e))
 

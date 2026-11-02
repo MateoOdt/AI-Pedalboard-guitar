@@ -1,0 +1,8 @@
+node_modules/
+
+# Generated RAG vector cache — rebuilt from the dataset on first run
+ai-server/tone-vectors-cache.json
+
+# Python
+__pycache__/
+*.pyc

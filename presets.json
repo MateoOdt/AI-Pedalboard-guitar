@@ -135,6 +135,101 @@
         }
       },
       "name": "test22"
+    },
+    {
+      "id": "1793653508430",
+      "inputDeviceId": "953cd3f4063c17322a94dfe5ea148eb0cb3752b6fe721f622f0834b2d1a6e160",
+      "outputDeviceId": "default",
+      "ampModel": "fender",
+      "channel": "clean",
+      "amp": {
+        "gain": 1,
+        "volume": 7,
+        "presence": 3,
+        "bass": 6,
+        "mid": 6,
+        "treble": 4
+      },
+      "effects": {
+        "compressor": {
+          "on": true,
+          "threshold": -20,
+          "ratio": 2
+        },
+        "overdrive": {
+          "on": true,
+          "drive": 0.38,
+          "tone": 1000,
+          "level": 0.8
+        },
+        "distortion": {
+          "on": true,
+          "drive": 0.3,
+          "tone": 8000,
+          "level": 0.7
+        },
+        "chorus": {
+          "on": true,
+          "rate": 0.5,
+          "depth": 0.3,
+          "mix": 0.5
+        },
+        "phaser": {
+          "on": true,
+          "rate": 1,
+          "depth": 0.5,
+          "mix": 0.3
+        },
+        "delay": {
+          "on": true,
+          "time": 0.1,
+          "feedback": 0.5,
+          "mix": 0.7
+        },
+        "reverb": {
+          "on": true,
+          "room": 0.8,
+          "decay": 0.5,
+          "mix": 0.6
+        },
+        "tremolo": {
+          "on": true,
+          "rate": 1,
+          "depth": 0.6
+        },
+        "eq": {
+          "on": true,
+          "bass": -10,
+          "mid": -5,
+          "treble": 5
+        },
+        "noisegate": {
+          "on": false,
+          "threshold": -50,
+          "release": 0.1
+        },
+        "flanger": {
+          "on": false,
+          "rate": 0.5,
+          "depth": 0.5,
+          "feedback": 0.5,
+          "mix": 0.5
+        },
+        "fuzz": {
+          "on": false,
+          "drive": 0.9,
+          "tone": 2500,
+          "level": 0.8
+        },
+        "autowah": {
+          "on": false,
+          "sensitivity": 5,
+          "freqMin": 300,
+          "freqMax": 2800,
+          "q": 12
+        }
+      },
+      "name": "Eric clapton - AL"
     }
   ]
 }
