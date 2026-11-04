@@ -3,14 +3,14 @@
    ╚══════════════════════════════════════════════════════════════╝ */
 
 :root {
-  --ground:      #181210;
-  --surface:     #201a12;
-  --surface-2:   #2c2418;
-  --border:      #3a3020;
-  --border-2:    #504030;
-  --text:        #e2d8bc;
-  --text-dim:    #6a5c40;
-  --text-faint:  #3a3020;
+  --ground:      #2b2e34;
+  --surface:     #353942;
+  --surface-2:   #434852;
+  --border:      #525862;
+  --border-2:    #636a76;
+  --text:        #e8eaef;
+  --text-dim:    #9aa0ac;
+  --text-faint:  #5c6370;
   --amber:       #c47e0a;
   --amber-warm:  #e09828;
   --amber-glow:  rgba(196,126,10,0.38);
@@ -69,10 +69,10 @@ body {
 /* ── HEADER (wood grain) ─────────────────────────────────────────── */
 header {
   background:
-    repeating-linear-gradient(88deg, rgba(0,0,0,0) 0px, rgba(0,0,0,0) 3px, rgba(0,0,0,0.06) 3px, rgba(0,0,0,0.06) 4px),
-    repeating-linear-gradient(2deg, rgba(255,255,255,0) 0px, rgba(255,255,255,0) 16px, rgba(255,255,255,0.012) 16px, rgba(255,255,255,0.012) 17px),
-    linear-gradient(180deg, #3a2a18 0%, #2c2010 60%, #382818 100%);
-  border-bottom: 2px solid #1a1208;
+    repeating-linear-gradient(88deg, rgba(0,0,0,0) 0px, rgba(0,0,0,0) 3px, rgba(0,0,0,0.05) 3px, rgba(0,0,0,0.05) 4px),
+    repeating-linear-gradient(2deg, rgba(255,255,255,0) 0px, rgba(255,255,255,0) 16px, rgba(255,255,255,0.02) 16px, rgba(255,255,255,0.02) 17px),
+    linear-gradient(180deg, #4a4f59 0%, #3c414b 60%, #474c56 100%);
+  border-bottom: 2px solid #23262c;
   box-shadow: 0 2px 8px rgba(0,0,0,0.6);
   padding: 0 18px;
   display: flex;
@@ -81,15 +81,7 @@ header {
   flex-shrink: 0;
   height: 44px;
 }
-.logo {
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 14px;
-  font-style: normal;
-  letter-spacing: 0.32em;
-  color: var(--amber-warm);
-  text-shadow: 0 0 18px rgba(224,152,40,0.5), 0 1px 0 rgba(0,0,0,0.6);
-}
-.controls { display: flex; align-items: center; gap: 10px; }
+.controls { display: flex; align-items: center; gap: 10px; margin-left: auto; }
 .device-sel { display: flex; align-items: center; gap: 5px; }
 .device-sel label { font-size: 8px; color: var(--text-dim); letter-spacing: 0.18em; text-transform: uppercase; }
 .device-sel select {
@@ -115,11 +107,11 @@ header {
 
 /* ── AMP HEAD (tolex texture) ───────────────────────────────────── */
 .amp-head {
-  background-color: #141010;
-  background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.045) 1px, transparent 0);
+  background-color: #23262c;
+  background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.04) 1px, transparent 0);
   background-size: 3px 3px;
-  border-bottom: 3px solid #0a0806;
-  border-top: 1px solid #2c2018;
+  border-bottom: 3px solid #16181c;
+  border-top: 1px solid #3a3f49;
   box-shadow: inset 0 -4px 20px rgba(0,0,0,0.6), 0 3px 10px rgba(0,0,0,0.5);
   padding: 10px 18px;
   display: flex;
@@ -230,11 +222,11 @@ header {
 
 /* ── GENRE BAR ──────────────────────────────────────────────────── */
 .genre-bar {
-  background: linear-gradient(180deg, #201810 0%, #181208 100%);
-  border-bottom: 1px solid #0e0c08; padding: 8px 18px;
+  background: linear-gradient(180deg, #2f333b 0%, #272a31 100%);
+  border-bottom: 1px solid #1a1c21; padding: 8px 18px;
   display: flex; align-items: center; gap: 6px; flex-shrink: 0; height: 48px;
 }
-.genre-label { font-size: 8px; color: #7a6a3a; letter-spacing: 0.28em; text-transform: uppercase; font-weight: 600; margin-right: 8px; min-width: 44px; }
+.genre-label { font-size: 8px; color: #8a909c; letter-spacing: 0.28em; text-transform: uppercase; font-weight: 600; margin-right: 8px; min-width: 44px; }
 .genre-btn {
   background: rgba(0,0,0,0.35); color: var(--text-dim); border: 1px solid var(--border);
   border-radius: 6px; padding: 6px 13px; font-size: 10.5px; cursor: pointer; transition: all 0.12s;
@@ -244,7 +236,7 @@ header {
 
 /* ── PRESET BAR ─────────────────────────────────────────────────── */
 .preset-bar {
-  background: #0e0c08; border-bottom: 1px solid #080604; padding: 0 18px;
+  background: #1c1f24; border-bottom: 1px solid #141619; padding: 0 18px;
   display: flex; align-items: center; gap: 6px; flex-shrink: 0; height: 44px;
 }
 .preset-label { font-size: 8px; color: #7a6a3a; letter-spacing: 0.28em; text-transform: uppercase; font-weight: 600; margin-right: 6px; min-width: 48px; }
@@ -283,7 +275,7 @@ header {
   grid-template-rows: 1fr 1fr 0.8fr;
   gap: 10px;
   padding: 14px;
-  background-color: #0e0c0a;
+  background-color: #1c1f24;
   background-image:
     repeating-linear-gradient(45deg, rgba(255,255,255,0.013) 0px, rgba(255,255,255,0.013) 1px, transparent 1px, transparent 5px),
     repeating-linear-gradient(-45deg, rgba(255,255,255,0.013) 0px, rgba(255,255,255,0.013) 1px, transparent 1px, transparent 5px);
@@ -535,10 +527,10 @@ body.direct-mode #pedal-distortion { opacity: 0.18; pointer-events: none; }
    ╚══════════════════════════════════════════════════════════════╝ */
 .ai-panel {
   position: fixed; top: 44px; right: 0; bottom: 0; width: 360px;
-  background-color: #0e0c0a;
+  background-color: #1c1f24;
   background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.022) 1px, transparent 0);
   background-size: 4px 4px;
-  border-left: 1px solid #201c14;
+  border-left: 1px solid #30343c;
   display: flex; flex-direction: column;
   transform: translateX(100%);
   transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);

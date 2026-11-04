@@ -11,14 +11,17 @@ Plug in your guitar (or any audio input), shape your tone with a chain of amps a
   - Effects: compressor, overdrive, distortion, chorus, phaser, delay, reverb, tremolo, EQ
 - **AI tone assistant** — describe a sound or a song/artist and get a full pedalboard preset back
   - Runs entirely locally against Ollama
-  - Matches requests against a bundled [guitar-tone dataset](https://github.com/Pera-Labs/guitar-tone-dataset) before falling back to pure LLM generation
+  - **Semantic RAG** — tones from the [guitar-tone dataset](https://github.com/Pera-Labs/guitar-tone-dataset) are embedded into an in-memory vector store, so requests match by *meaning* (e.g. *"warm bluesy solo"*) via cosine similarity, not just keywords; below a similarity threshold it falls back to pure LLM generation
+  - **Agentic research mode** — a [LangGraph](https://langchain-ai.github.io/langgraph/) agent with a `search_tones` tool drives its own retrieval: it reformulates vague prompts ("something dreamy" → "ambient clean reverb"), searches the dataset more than once, and grounds the final preset in what it finds
 - **Presets** — save and recall your own setups (stored in `presets.json`)
 
 ## Requirements
 
 - [Node.js](https://nodejs.org) + npm
 - [Python 3](https://www.python.org)
-- [Ollama](https://ollama.com) running locally (default API at `http://localhost:11434`) with at least one model pulled
+- [Ollama](https://ollama.com) running locally (default API at `http://localhost:11434`) with:
+  - at least one chat model pulled (e.g. `ollama pull mistral`)
+  - an embedding model for semantic RAG — `nomic-embed-text` by default (`ollama pull nomic-embed-text`)
 
 ## Setup
 
@@ -54,18 +57,23 @@ renderer.js        Audio engine, effects chain, UI logic, AI client
 styles.css         UI styling
 presets.json       Saved user presets
 ai-server/
-  server.py              FastAPI + LangChain/Ollama tone-suggestion service
-  requirements.txt       Python dependencies
+  server.py                FastAPI service: dataset loading, semantic RAG, /suggest endpoints
+  agent.py                 LangGraph agentic pipeline + the search_tones tool
+  requirements.txt         Python dependencies
   guitar-tones-cache.json  Cached tone dataset
+  tone-vectors-cache.json  Cached tone embeddings (vector store)
 ```
 
 ## AI server endpoints
 
-| Method | Path        | Description                                  |
-|--------|-------------|----------------------------------------------|
-| GET    | `/health`   | Health check                                 |
-| GET    | `/models`   | List available Ollama models                 |
-| POST   | `/suggest`  | Generate a pedalboard preset from a prompt   |
+| Method | Path             | Description                                                              |
+|--------|------------------|--------------------------------------------------------------------------|
+| GET    | `/health`        | Health check — dataset size, whether RAG is ready, and the embed model   |
+| GET    | `/models`        | List available Ollama chat models (embedding models are filtered out)    |
+| POST   | `/suggest`       | Generate a preset from a prompt (single semantic-RAG retrieval)          |
+| POST   | `/suggest/agent` | Generate a preset via the agentic pipeline (agent-driven, multi-search)  |
+
+Both `/suggest` endpoints accept a JSON body `{ "prompt": "...", "model": "mistral" }`.
 
 ## License
 
